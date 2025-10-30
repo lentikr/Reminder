@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -77,11 +78,11 @@ fun SettingsScreen(
                 text = "备份与恢复",
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             )
-            Divider()
+            HorizontalDivider()
             SettingsActionItem(
                 title = "备份到本地",
                 description = "导出所有提醒数据到应用专属文件夹。",
-                icon = Icons.Filled.Settings,
+                icon = Icons.Filled.Backup,
                 enabled = !isProcessing
             ) {
                 coroutineScope.launch {
@@ -94,7 +95,7 @@ fun SettingsScreen(
             SettingsActionItem(
                 title = "从备份恢复",
                 description = "读取最近的本地备份并覆盖当前数据。",
-                icon = Icons.Filled.Settings,
+                icon = Icons.Filled.Restore,
                 enabled = !isProcessing
             ) {
                 coroutineScope.launch {

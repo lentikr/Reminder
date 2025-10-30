@@ -37,8 +37,8 @@ object AppViewModelProvider {
 }
 
 /**
- * Extension function to queries for [Application] object and returns an instance of
- * [ReminderApplication].
+ * Extension function to queries for Application object and returns an instance of
+ * ReminderApplication.
  */
 fun CreationExtras.reminderApplication(): ReminderApplication = 
     (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ReminderApplication)
