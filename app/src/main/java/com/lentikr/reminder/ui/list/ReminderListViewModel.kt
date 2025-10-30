@@ -9,9 +9,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
-class ReminderListViewModel(private val reminderRepository: ReminderRepository) : ViewModel() {
+class ReminderListViewModel(reminderRepository: ReminderRepository) : ViewModel() {
 
-    val reminderListUiState: StateFlow<ReminderListUiState> = 
+    val reminderListUiState: StateFlow<ReminderListUiState> =
         reminderRepository.getAllRemindersStream().map { ReminderListUiState(it) }
             .stateIn(
                 scope = viewModelScope,

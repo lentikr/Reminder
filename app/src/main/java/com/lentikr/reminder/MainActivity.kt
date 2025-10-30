@@ -193,7 +193,7 @@ private val ReminderCardShape = RoundedCornerShape(24.dp)
 
 private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> Boolean) {
     COUNTDOWN("倒数日", { it.type == ReminderType.ANNUAL }),
-    COUNTUP("累计日", { it.type == ReminderType.COUNT_UP })
+    COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -273,7 +273,7 @@ private fun ReminderTopBar(
     onSettingsClick: () -> Unit
 ) {
     TopAppBar(
-        title = { Text("提醒") },
+        title = { Text("Reminder") },
         actions = {
             CompactTabSwitcher(
                 selectedTab = selectedTab,
@@ -440,11 +440,25 @@ private fun ReminderSummaryCard(
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                val initialTextStyle = MaterialTheme.typography.bodyMedium
+                var resizedTextStyle by remember { mutableStateOf(initialTextStyle) }
+                var shouldShrink by remember { mutableStateOf(true) }
+
                 Text(
                     text = referenceText,
-                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    style = resizedTextStyle,
+                    softWrap = false,
+                    onTextLayout = { result ->
+                        if (shouldShrink && result.didOverflowWidth) {
+                            resizedTextStyle = resizedTextStyle.copy(
+                                fontSize = resizedTextStyle.fontSize * 0.95
+                            )
+                        } else {
+                            shouldShrink = false
+                        }
+                    }
                 )
             }
         }

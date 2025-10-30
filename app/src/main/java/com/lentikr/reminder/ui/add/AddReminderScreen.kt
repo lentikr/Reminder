@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -61,6 +62,7 @@ fun AddReminderScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     val uiState = viewModel.reminderUiState
     val isEditing = uiState.id != 0
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     val disabledTextFieldColors = OutlinedTextFieldDefaults.colors(
         disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -165,8 +167,8 @@ fun AddReminderScreen(
                             onClick = { viewModel.updateUiState(uiState.copy(type = type)) }
                         )
                         val text = when (type) {
-                            ReminderType.ANNUAL -> "每年"
-                            ReminderType.COUNT_UP -> "累计"
+                            ReminderType.ANNUAL -> "倒数日"
+                            ReminderType.COUNT_UP -> "正数日"
                         }
                         Text(text)
                     }
@@ -197,13 +199,7 @@ fun AddReminderScreen(
 
             if (isEditing) {
                 OutlinedButton(
-                    onClick = {
-                        coroutineScope.launch {
-                            if (viewModel.deleteReminder()) {
-                                onNavigateUp()
-                            }
-                        }
-                    },
+                    onClick = { showDeleteConfirmDialog = true },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -211,6 +207,33 @@ fun AddReminderScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
                 ) {
                     Text("删除提醒")
+                }
+
+                if (showDeleteConfirmDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showDeleteConfirmDialog = false },
+                        title = { Text("确认删除") },
+                        text = { Text("确定要删除此提醒吗？") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    showDeleteConfirmDialog = false
+                                    coroutineScope.launch {
+                                        if (viewModel.deleteReminder()) {
+                                            onNavigateUp()
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("确认")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                                Text("取消")
+                            }
+                        }
+                    )
                 }
             }
 
@@ -249,3 +272,4 @@ private fun AddReminderScreenPreview() {
         AddReminderScreen(onNavigateUp = {})
     }
 }
+
