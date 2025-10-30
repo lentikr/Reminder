@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lentikr.reminder
 
 import android.os.Bundle
@@ -74,6 +76,7 @@ import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
+import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
@@ -191,12 +194,12 @@ fun ReminderApp() {
 
 private val ReminderCardShape = RoundedCornerShape(24.dp)
 
-private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> Boolean) {
+private enum class ReminderTab constructor(val title: String, val filter: (ReminderItem) -> Boolean) {
     COUNTDOWN("倒数日", { it.type == ReminderType.ANNUAL }),
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSerializationApi::class)
 @Composable
 fun ReminderListScreen(
     navController: NavController,

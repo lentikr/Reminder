@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lentikr.reminder.ui.add
 
 import androidx.compose.runtime.getValue
@@ -11,6 +13,7 @@ import com.lentikr.reminder.data.ReminderRepository
 import com.lentikr.reminder.data.ReminderType
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
 
 class AddReminderViewModel(
@@ -56,8 +59,7 @@ class AddReminderViewModel(
 
     suspend fun deleteReminder(): Boolean {
         val id = reminderId ?: return false
-        val reminder = reminderUiState.toReminderItem().copy(id = id)
-        reminderRepository.deleteReminder(reminder)
+        reminderRepository.deleteReminderById(id)
         return true
     }
 

@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lentikr.reminder.data
 
 import androidx.room.Dao
@@ -6,6 +8,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.ExperimentalSerializationApi
 
 @Dao
 interface ReminderDao {
@@ -17,6 +20,9 @@ interface ReminderDao {
 
     @Delete
     suspend fun delete(item: ReminderItem)
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun deleteById(id: Int)
 
     @Query("SELECT * FROM reminders ORDER BY isPinned DESC, date ASC")
     fun getAllReminders(): Flow<List<ReminderItem>>

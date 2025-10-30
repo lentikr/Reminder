@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.lentikr.reminder.data
 
 import android.content.Context
@@ -5,6 +7,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import kotlinx.serialization.ExperimentalSerializationApi
 
 @Database(entities = [ReminderItem::class], version = 1, exportSchema = false)
 @TypeConverters(com.lentikr.reminder.data.TypeConverters::class)
