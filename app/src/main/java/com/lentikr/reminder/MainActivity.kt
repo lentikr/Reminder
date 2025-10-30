@@ -4,11 +4,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -45,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -76,7 +85,12 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ReminderTheme {
-                ReminderApp()
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    ReminderApp()
+                }
             }
         }
     }
@@ -99,19 +113,77 @@ fun ReminderApp() {
         navController = navController,
         startDestination = Routes.REMINDER_LIST
     ) {
-        composable(Routes.REMINDER_LIST) {
+        composable(
+            Routes.REMINDER_LIST,
+            exitTransition = {
+                when {
+                    targetState.destination.route == Routes.SETTINGS ->
+                        slideOutHorizontally(animationSpec = tween(400), targetOffsetX = { -it })
+                    targetState.destination.route == Routes.ADD_REMINDER ||
+                            targetState.destination.route?.startsWith("edit_reminder") == true ->
+                        scaleOut(animationSpec = tween(400), targetScale = 0.9f) +
+                                fadeOut(animationSpec = tween(400), targetAlpha = 0.7f)
+                    else -> fadeOut(animationSpec = tween(400))
+                }
+            },
+            popEnterTransition = {
+                when {
+                    initialState.destination.route == Routes.SETTINGS ->
+                        slideInHorizontally(animationSpec = tween(400), initialOffsetX = { -it })
+                    initialState.destination.route == Routes.ADD_REMINDER ||
+                            initialState.destination.route?.startsWith("edit_reminder") == true ->
+                        scaleIn(animationSpec = tween(400), initialScale = 0.9f) +
+                                fadeIn(animationSpec = tween(400), initialAlpha = 0.7f)
+                    else -> fadeIn(animationSpec = tween(400))
+                }
+            }
+        ) {
             ReminderListScreen(navController = navController)
         }
-        composable(Routes.ADD_REMINDER) {
+        composable(
+            Routes.ADD_REMINDER,
+            enterTransition = {
+                scaleIn(
+                    animationSpec = tween(400),
+                    transformOrigin = TransformOrigin(0.9f, 0.95f)
+                ) + fadeIn(animationSpec = tween(400))
+            },
+            popExitTransition = {
+                scaleOut(
+                    animationSpec = tween(400),
+                    transformOrigin = TransformOrigin(0.9f, 0.95f)
+                ) + fadeOut(animationSpec = tween(400))
+            }
+        ) {
             AddReminderScreen(onNavigateUp = { navController.navigateUp() })
         }
         composable(
             route = Routes.EDIT_REMINDER_PATTERN,
-            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
+            enterTransition = {
+                scaleIn(
+                    animationSpec = tween(400),
+                    transformOrigin = TransformOrigin(0.9f, 0.95f)
+                ) + fadeIn(animationSpec = tween(400))
+            },
+            popExitTransition = {
+                scaleOut(
+                    animationSpec = tween(400),
+                    transformOrigin = TransformOrigin(0.9f, 0.95f)
+                ) + fadeOut(animationSpec = tween(400))
+            }
         ) {
             AddReminderScreen(onNavigateUp = { navController.navigateUp() })
         }
-        composable(Routes.SETTINGS) {
+        composable(
+            Routes.SETTINGS,
+            enterTransition = {
+                slideInHorizontally(animationSpec = tween(400), initialOffsetX = { it })
+            },
+            popExitTransition = {
+                slideOutHorizontally(animationSpec = tween(400), targetOffsetX = { it })
+            }
+        ) {
             SettingsScreen(onNavigateBack = { navController.navigateUp() })
         }
     }
