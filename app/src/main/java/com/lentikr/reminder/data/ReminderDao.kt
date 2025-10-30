@@ -20,4 +20,10 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders ORDER BY isPinned DESC, date DESC")
     fun getAllReminders(): Flow<List<ReminderItem>>
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    fun getReminder(id: Int): Flow<ReminderItem?>
+
+    @Query("DELETE FROM reminders")
+    suspend fun deleteAll()
 }

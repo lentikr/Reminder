@@ -9,6 +9,8 @@ class ReminderRepository(private val reminderDao: ReminderDao) {
 
     fun getAllRemindersStream(): Flow<List<ReminderItem>> = reminderDao.getAllReminders()
 
+    fun getReminderStream(id: Int): Flow<ReminderItem?> = reminderDao.getReminder(id)
+
     suspend fun insertReminder(item: ReminderItem) {
         reminderDao.insert(item)
     }
@@ -19,5 +21,9 @@ class ReminderRepository(private val reminderDao: ReminderDao) {
 
     suspend fun updateReminder(item: ReminderItem) {
         reminderDao.update(item)
+    }
+
+    suspend fun deleteAllReminders() {
+        reminderDao.deleteAll()
     }
 }

@@ -1,7 +1,9 @@
 package com.lentikr.reminder.ui.add
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,12 +14,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
@@ -28,10 +32,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,11 +60,19 @@ fun AddReminderScreen(
     val coroutineScope = rememberCoroutineScope()
     var showDatePicker by remember { mutableStateOf(false) }
     val uiState = viewModel.reminderUiState
+    val isEditing = uiState.id != 0
+
+    val disabledTextFieldColors = OutlinedTextFieldDefaults.colors(
+        disabledTextColor = MaterialTheme.colorScheme.onSurface,
+        disabledBorderColor = MaterialTheme.colorScheme.outline,
+        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("添加提醒") },
+                title = { Text(if (isEditing) "编辑提醒" else "新增提醒") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
                         Icon(
@@ -88,26 +100,26 @@ fun AddReminderScreen(
                 singleLine = true
             )
 
-            OutlinedTextField(
-                value = uiState.date.format(DateTimeFormatter.ISO_LOCAL_DATE),
-                onValueChange = { },
-                label = { Text("日期") },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { showDatePicker = true },
-                readOnly = true,
-                enabled = false,
-                 colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    .clickable { showDatePicker = true }
+            ) {
+                OutlinedTextField(
+                    value = uiState.date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                    onValueChange = { },
+                    label = { Text("日期") },
+                    modifier = Modifier.fillMaxWidth(),
+                    readOnly = true,
+                    enabled = false,
+                    colors = disabledTextFieldColors
                 )
-            )
+            }
 
             if (showDatePicker) {
                 val datePickerState = rememberDatePickerState(
-                    initialSelectedDateMillis = uiState.date.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    initialSelectedDateMillis = uiState.date.atStartOfDay(ZoneId.systemDefault())
+                        .toInstant().toEpochMilli()
                 )
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker = false },
@@ -115,7 +127,9 @@ fun AddReminderScreen(
                         TextButton(
                             onClick = {
                                 datePickerState.selectedDateMillis?.let { millis ->
-                                    val newDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                                    val newDate = Instant.ofEpochMilli(millis)
+                                        .atZone(ZoneId.systemDefault())
+                                        .toLocalDate()
                                     viewModel.updateUiState(uiState.copy(date = newDate))
                                 }
                                 showDatePicker = false
@@ -137,7 +151,7 @@ fun AddReminderScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("类型:", style = MaterialTheme.typography.bodyLarge)
+                Text("类型", style = MaterialTheme.typography.bodyLarge)
                 Spacer(Modifier.width(16.dp))
                 ReminderType.entries.forEach { type ->
                     Row(
@@ -159,19 +173,46 @@ fun AddReminderScreen(
                 }
             }
 
-            SettingSwitch(title = "农历", checked = uiState.isLunar, onCheckedChange = { viewModel.updateUiState(uiState.copy(isLunar = it)) })
-            
+            SettingSwitch(
+                title = "农历",
+                checked = uiState.isLunar,
+                onCheckedChange = { viewModel.updateUiState(uiState.copy(isLunar = it)) }
+            )
+
             OutlinedTextField(
                 value = uiState.category,
                 onValueChange = { viewModel.updateUiState(uiState.copy(category = it)) },
-                label = { Text("分类 (可选)") },
+                label = { Text("分类（可选）") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
 
-            SettingSwitch(title = "置顶", checked = uiState.isPinned, onCheckedChange = { viewModel.updateUiState(uiState.copy(isPinned = it)) })
-            
+            SettingSwitch(
+                title = "置顶",
+                checked = uiState.isPinned,
+                onCheckedChange = { viewModel.updateUiState(uiState.copy(isPinned = it)) }
+            )
+
             Spacer(Modifier.weight(1f))
+
+            if (isEditing) {
+                OutlinedButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            if (viewModel.deleteReminder()) {
+                                onNavigateUp()
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    ),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                ) {
+                    Text("删除提醒")
+                }
+            }
 
             Button(
                 onClick = {
@@ -183,7 +224,7 @@ fun AddReminderScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = uiState.title.isNotBlank()
             ) {
-                Text("保存")
+                Text(if (isEditing) "保存修改" else "保存")
             }
         }
     }
@@ -203,7 +244,7 @@ private fun SettingSwitch(title: String, checked: Boolean, onCheckedChange: (Boo
 
 @Preview(showBackground = true)
 @Composable
-fun AddReminderScreenPreview() {
+private fun AddReminderScreenPreview() {
     ReminderTheme {
         AddReminderScreen(onNavigateUp = {})
     }
