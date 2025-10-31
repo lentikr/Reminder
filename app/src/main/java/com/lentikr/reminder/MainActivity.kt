@@ -70,7 +70,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -276,30 +278,41 @@ private fun reminderCardVisuals(type: ReminderType): ReminderCardVisuals {
 
 @Composable
 private fun DayCountRow(dayCount: Int, visuals: ReminderCardVisuals) {
-    Row(
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val suffixText = "天"
+    val suffixStyle = MaterialTheme.typography.bodyLarge
+    val spacing = 6.dp
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.Bottom
+        contentAlignment = Alignment.Center
     ) {
-        AutoResizeText(
-            text = dayCount.toString(),
-            style = MaterialTheme.typography.displayLarge.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-1).sp
-            ),
-            modifier = Modifier.alignByBaseline(),
-            color = visuals.numberColor
-        )
-        Text(
-            text = "天",
-            style = MaterialTheme.typography.bodyLarge,
-            color = visuals.secondaryTextColor,
-            modifier = Modifier
-                .alignByBaseline()
-                .padding(start = 6.dp)
-        )
+        val suffixWidth = with(density) {
+            textMeasurer.measure(text = suffixText, style = suffixStyle).size.width.toDp()
+        }
+        val availableNumberWidth = (maxWidth - suffixWidth - spacing).coerceAtLeast(0.dp)
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            AutoResizeText(
+                text = dayCount.toString(),
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1).sp
+                ),
+                modifier = Modifier.widthIn(max = availableNumberWidth),
+                color = visuals.numberColor
+            )
+            Spacer(modifier = Modifier.width(spacing))
+            Text(
+                text = suffixText,
+                style = suffixStyle,
+                color = visuals.secondaryTextColor
+            )
+        }
     }
 }
 
