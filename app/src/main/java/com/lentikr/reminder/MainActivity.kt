@@ -30,9 +30,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -68,6 +67,7 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -266,24 +266,27 @@ fun ReminderListScreen(
                             .fillMaxWidth()
                     )
                 } else {
-                    LazyVerticalGrid(
+                    val groupedSections = buildReminderSections(filteredItems)
+                    LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        columns = GridCells.Fixed(2),
                         contentPadding = PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
                             top = 16.dp,
                             bottom = listBottomPadding
                         ),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
                     ) {
-                        items(filteredItems, key = { it.id }) { reminder ->
-                            ReminderSummaryCard(
-                                reminder = reminder,
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { navController.navigate(Routes.editReminder(reminder.id)) }
-                            )
+                        groupedSections.forEach { section ->
+                            item(key = section.key) {
+                                ReminderSection(
+                                    title = section.title,
+                                    reminders = section.items,
+                                    onReminderClick = { reminderId ->
+                                        navController.navigate(Routes.editReminder(reminderId))
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -343,6 +346,129 @@ fun ReminderListScreen(
 
 
 
+private data class ReminderSectionData(
+    val key: String,
+    val title: String,
+    val items: List<ReminderItem>
+)
+
+private fun buildReminderSections(reminders: List<ReminderItem>): List<ReminderSectionData> {
+    if (reminders.isEmpty()) return emptyList()
+
+    val locale = Locale.getDefault()
+    compareBy<ReminderItem> { normalizeCategory(it.category).lowercase(locale) }
+        .thenBy { it.title.lowercase(locale) }
+        .thenBy { it.id }
+
+    val result = mutableListOf<ReminderSectionData>()
+    val pinned = reminders.filter { it.isPinned }.sortedWith(
+        compareBy<ReminderItem> { reminderSortValue(it) }.thenBy { it.id }
+    )
+    if (pinned.isNotEmpty()) {
+        result += ReminderSectionData(
+            key = "pinned",
+            title = "置顶",
+            items = pinned
+        )
+    }
+
+    val nonPinned = reminders.filterNot { it.isPinned }
+    val grouped = nonPinned.groupBy { normalizeCategory(it.category) }
+
+    val sortedGroups = grouped.keys.sortedWith(
+        compareBy<String> { groupSortKey(it).lowercase(locale) }
+            .thenBy { it.lowercase(locale) }
+    )
+
+    sortedGroups.forEach { category ->
+        val items = grouped[category]
+            .orEmpty()
+            .sortedWith(compareBy<ReminderItem> { reminderSortValue(it) }
+                .thenBy { it.title.lowercase(locale) }
+                .thenBy { it.id })
+        if (items.isNotEmpty()) {
+            val title = category.ifBlank { "未分类" }
+            val key = if (category.isBlank()) "group_uncategorized" else "group_${category.lowercase(locale)}"
+            result += ReminderSectionData(
+                key = key,
+                title = title,
+                items = items
+            )
+        }
+    }
+
+    return result
+}
+
+private fun normalizeCategory(category: String): String = category.trim()
+
+private fun groupSortKey(category: String): String {
+    if (category.isBlank()) return "#"
+    return category.first().toString()
+}
+
+private fun reminderSortValue(reminder: ReminderItem): Int {
+    val today = LocalDate.now()
+    return when (reminder.type) {
+        ReminderType.ANNUAL -> {
+            val nextDate = if (reminder.isLunar) {
+                CalendarUtil.getNextLunarDate(reminder.date)
+            } else {
+                var candidate = reminder.date.withYear(today.year)
+                if (candidate.isBefore(today)) {
+                    candidate = candidate.plusYears(1)
+                }
+                candidate
+            }
+            ChronoUnit.DAYS.between(today, nextDate).toInt()
+        }
+
+        ReminderType.COUNT_UP -> {
+            ChronoUnit.DAYS.between(reminder.date, today).toInt().coerceAtLeast(0)
+        }
+    }
+}
+
+@Composable
+private fun ReminderSection(
+    title: String,
+    reminders: List<ReminderItem>,
+    onReminderClick: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            val rows = reminders.chunked(2)
+            rows.forEach { rowItems ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    rowItems.forEach { reminder ->
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            ReminderSummaryCard(
+                                reminder = reminder,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 180.dp),
+                                onClick = { onReminderClick(reminder.id) }
+                            )
+                        }
+                    }
+                    if (rowItems.size < 2) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun FloatingSegmentedTabs(
     tabs: Array<ReminderTab>,
@@ -352,7 +478,7 @@ private fun FloatingSegmentedTabs(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    var containerWidthPx by remember { mutableStateOf(0) }
+    var containerWidthPx by remember { mutableIntStateOf(0) }
     val segmentCount = tabs.size.coerceAtLeast(1)
     val indicatorWidthPx = if (containerWidthPx > 0) containerWidthPx / segmentCount else 0
     val indicatorOffsetPx by animateIntAsState(
@@ -472,8 +598,6 @@ private fun ReminderSummaryCard(
     }
 
     val headerTitle = "${reminder.title} $headerLabelSuffix"
-    val categoryDisplay = reminder.category.takeIf { it.isNotBlank() }
-
     Card(
         modifier = modifier,
         shape = ReminderCardShape,
@@ -497,28 +621,6 @@ private fun ReminderSummaryCard(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
                         color = headerTextColor
                     )
-                    if (categoryDisplay != null || reminder.isPinned) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            categoryDisplay?.let {
-                                Text(
-                                    text = it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = headerTextColor.copy(alpha = 0.9f)
-                                )
-                            }
-                            if (reminder.isPinned) {
-                                Text(
-                                    text = "已置顶",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = headerTextColor.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-                    }
                 }
             }
             Column(

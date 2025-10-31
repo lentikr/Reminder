@@ -11,10 +11,14 @@ import androidx.lifecycle.viewModelScope
 import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderRepository
 import com.lentikr.reminder.data.ReminderType
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
+import java.util.Locale
 
 class AddReminderViewModel(
     private val reminderRepository: ReminderRepository,
@@ -22,6 +26,22 @@ class AddReminderViewModel(
 ) : ViewModel() {
 
     private val reminderId: Int? = savedStateHandle.get<Int>("reminderId")
+
+    val categorySuggestions = reminderRepository
+        .getDistinctCategoriesStream()
+        .map { categories ->
+            val locale = Locale.getDefault()
+            categories
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .distinctBy { it.lowercase(locale) }
+                .sortedWith(compareBy<String> { it.lowercase(locale) })
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     /**
      * Holds current reminder ui state
