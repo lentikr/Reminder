@@ -56,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -199,7 +200,7 @@ private enum class ReminderTab constructor(val title: String, val filter: (Remin
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalSerializationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderListScreen(
     navController: NavController,
@@ -430,42 +431,56 @@ private fun ReminderSummaryCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = dayCount.toString(),
-                    style = MaterialTheme.typography.displayLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-1).sp
-                    ),
-                    textAlign = TextAlign.Center
-                )
+               AutoResizeText(
+                   text = dayCount.toString(),
+                   style = MaterialTheme.typography.displayLarge.copy(
+                       fontWeight = FontWeight.Bold,
+                       letterSpacing = (-1).sp
+                   ),
+                   modifier = Modifier.fillMaxWidth()
+               )
                 Text(
                     text = "天",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                val initialTextStyle = MaterialTheme.typography.bodyMedium
-                var resizedTextStyle by remember { mutableStateOf(initialTextStyle) }
-                var shouldShrink by remember { mutableStateOf(true) }
-
-                Text(
-                    text = referenceText,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    style = resizedTextStyle,
-                    softWrap = false,
-                    onTextLayout = { result ->
-                        if (shouldShrink && result.didOverflowWidth) {
-                            resizedTextStyle = resizedTextStyle.copy(
-                                fontSize = resizedTextStyle.fontSize * 0.95
-                            )
-                        } else {
-                            shouldShrink = false
-                        }
-                    }
-                )
+               AutoResizeText(
+                   text = referenceText,
+                   style = MaterialTheme.typography.bodyMedium,
+                   modifier = Modifier.fillMaxWidth()
+               )
             }
         }
     }
+}
+
+@Composable
+fun AutoResizeText(
+   text: String,
+   style: TextStyle,
+   modifier: Modifier = Modifier,
+   color: Color = Color.Unspecified
+) {
+   var resizedTextStyle by remember { mutableStateOf(style) }
+   var shouldShrink by remember(text) { mutableStateOf(true) }
+
+   Text(
+       text = text,
+       color = color,
+       modifier = modifier,
+       textAlign = TextAlign.Center,
+       style = resizedTextStyle,
+       softWrap = false,
+       onTextLayout = { result ->
+           if (shouldShrink && result.didOverflowWidth) {
+               resizedTextStyle = resizedTextStyle.copy(
+                   fontSize = resizedTextStyle.fontSize * 0.95
+               )
+           } else {
+               shouldShrink = false
+           }
+       }
+   )
 }
 
 @Composable
