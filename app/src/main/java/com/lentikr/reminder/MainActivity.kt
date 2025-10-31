@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +31,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,6 +46,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
@@ -50,6 +56,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -77,6 +84,7 @@ import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
+import kotlinx.coroutines.launch
 import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -200,7 +208,7 @@ private enum class ReminderTab constructor(val title: String, val filter: (Remin
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ReminderListScreen(
     navController: NavController,
@@ -208,18 +216,22 @@ fun ReminderListScreen(
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
-    var selectedTab by remember { mutableStateOf(ReminderTab.COUNTDOWN) }
-
-    val filteredItems = reminderListUiState.itemList.filter(selectedTab.filter)
+    val pagerState = rememberPagerState { ReminderTab.values().size }
+    val coroutineScope = rememberCoroutineScope()
+    val tabs = ReminderTab.values()
 
     Scaffold(
         topBar = {
-            ReminderTopBar(
-                selectedTab = selectedTab,
-                countdownCount = reminderListUiState.itemList.count { it.type == ReminderType.ANNUAL },
-                countupCount = reminderListUiState.itemList.count { it.type == ReminderType.COUNT_UP },
-                onTabSelected = { selectedTab = it },
-                onSettingsClick = { navController.navigate(Routes.SETTINGS) }
+            TopAppBar(
+                title = { Text("Reminder") },
+                actions = {
+                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "设置"
+                        )
+                    }
+                }
             )
         },
         floatingActionButton = {
@@ -240,26 +252,55 @@ fun ReminderListScreen(
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            if (filteredItems.isEmpty()) {
-                EmptyStateCard(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp, vertical = 32.dp)
-                        .fillMaxWidth()
-                )
-            } else {
-                LazyVerticalGrid(
-                    modifier = Modifier.fillMaxSize(),
-                    columns = GridCells.Fixed(2),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    items(filteredItems, key = { it.id }) { reminder ->
-                        ReminderSummaryCard(
-                            reminder = reminder,
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = { navController.navigate(Routes.editReminder(reminder.id)) }
-                        )
+            TabRow(
+                selectedTabIndex = pagerState.currentPage,
+                indicator = { tabPositions ->
+                    TabRowDefaults.Indicator(
+                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
+                        height = 4.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = pagerState.currentPage == index,
+                        onClick = {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                        },
+                        text = { Text(tab.title) }
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f)
+            ) { page ->
+                val filteredItems = reminderListUiState.itemList.filter(tabs[page].filter)
+                if (filteredItems.isEmpty()) {
+                    EmptyStateCard(
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp, vertical = 32.dp)
+                            .fillMaxWidth()
+                    )
+                } else {
+                    LazyVerticalGrid(
+                        modifier = Modifier.fillMaxSize(),
+                        columns = GridCells.Fixed(2),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredItems, key = { it.id }) { reminder ->
+                            ReminderSummaryCard(
+                                reminder = reminder,
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = { navController.navigate(Routes.editReminder(reminder.id)) }
+                            )
+                        }
                     }
                 }
             }
@@ -267,79 +308,7 @@ fun ReminderListScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReminderTopBar(
-    selectedTab: ReminderTab,
-    countdownCount: Int,
-    countupCount: Int,
-    onTabSelected: (ReminderTab) -> Unit,
-    onSettingsClick: () -> Unit
-) {
-    TopAppBar(
-        title = { Text("Reminder") },
-        actions = {
-            CompactTabSwitcher(
-                selectedTab = selectedTab,
-                countdownCount = countdownCount,
-                countupCount = countupCount,
-                onTabSelected = onTabSelected
-            )
-            IconButton(onClick = onSettingsClick) {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = "设置"
-                )
-            }
-        }
-    )
-}
 
-@Composable
-private fun CompactTabSwitcher(
-    selectedTab: ReminderTab,
-    countdownCount: Int,
-    countupCount: Int,
-    onTabSelected: (ReminderTab) -> Unit
-) {
-    val tabs = listOf(
-        ReminderTab.COUNTDOWN to countdownCount,
-        ReminderTab.COUNTUP to countupCount
-    )
-    val backgroundShape = RoundedCornerShape(20.dp)
-    Row(
-        modifier = Modifier
-            .padding(end = 8.dp)
-            .clip(backgroundShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        tabs.forEachIndexed { index, (tab, count) ->
-            val selected = tab == selectedTab
-            val tabShape = when (index) {
-                0 -> RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp)
-                tabs.lastIndex -> RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp)
-                else -> RoundedCornerShape(0.dp)
-            }
-            Box(
-                modifier = Modifier
-                    .clip(tabShape)
-                    .background(if (selected) MaterialTheme.colorScheme.primary else Color.Transparent)
-                    .clickable { onTabSelected(tab) }
-                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${tab.title} ($count)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (selected) FontWeight.Medium else FontWeight.Normal,
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun ReminderSummaryCard(
