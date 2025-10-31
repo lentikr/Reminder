@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -14,40 +15,41 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
@@ -63,11 +65,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -203,7 +209,7 @@ fun ReminderApp() {
 
 private val ReminderCardShape = RoundedCornerShape(24.dp)
 
-private enum class ReminderTab constructor(val title: String, val filter: (ReminderItem) -> Boolean) {
+private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> Boolean) {
     COUNTDOWN("倒数日", { it.type == ReminderType.ANNUAL }),
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
@@ -216,9 +222,14 @@ fun ReminderListScreen(
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
-    val pagerState = rememberPagerState { ReminderTab.values().size }
+    val pagerState = rememberPagerState { ReminderTab.entries.size }
     val coroutineScope = rememberCoroutineScope()
-    val tabs = ReminderTab.values()
+    val tabs = ReminderTab.entries.toTypedArray()
+    val tabCounts = tabs.map { tab -> reminderListUiState.itemList.count(tab.filter) }
+    val segmentedHeight = 54.dp
+    val segmentedBottomSpacing = 20.dp
+    val bottomRowVerticalPadding = 12.dp
+    val listBottomPadding = segmentedHeight + segmentedBottomSpacing + bottomRowVerticalPadding + 16.dp
 
     Scaffold(
         topBar = {
@@ -234,63 +245,36 @@ fun ReminderListScreen(
                 }
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Routes.ADD_REMINDER) }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "添加提醒"
-                )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.End,
+        floatingActionButton = {},
         modifier = modifier
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            TabRow(
-                selectedTabIndex = pagerState.currentPage,
-                indicator = { tabPositions ->
-                    TabRowDefaults.Indicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
-                        height = 4.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(index)
-                            }
-                        },
-                        text = { Text(tab.title) }
-                    )
-                }
-            }
-
             HorizontalPager(
                 state = pagerState,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) { page ->
                 val filteredItems = reminderListUiState.itemList.filter(tabs[page].filter)
                 if (filteredItems.isEmpty()) {
                     EmptyStateCard(
                         modifier = Modifier
                             .padding(horizontal = 24.dp, vertical = 32.dp)
+                            .padding(bottom = listBottomPadding)
                             .fillMaxWidth()
                     )
                 } else {
                     LazyVerticalGrid(
                         modifier = Modifier.fillMaxSize(),
                         columns = GridCells.Fixed(2),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = listBottomPadding
+                        ),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -304,11 +288,155 @@ fun ReminderListScreen(
                     }
                 }
             }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(bottom = segmentedBottomSpacing, start = 24.dp, end = 24.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Spacer(modifier = Modifier.size(segmentedHeight))
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        FloatingSegmentedTabs(
+                            tabs = tabs,
+                            counts = tabCounts,
+                            selectedIndex = pagerState.currentPage,
+                            onTabSelected = { index ->
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(index)
+                                }
+                            },
+                            modifier = Modifier
+                                .height(segmentedHeight)
+                                .widthIn(min = 200.dp, max = 260.dp)
+                        )
+                    }
+
+                    FloatingActionButton(
+                        onClick = { navController.navigate(Routes.ADD_REMINDER) },
+                        modifier = Modifier
+                            .padding(start = 16.dp)
+                            .size(segmentedHeight),
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "添加提醒"
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 
+
+@Composable
+private fun FloatingSegmentedTabs(
+    tabs: Array<ReminderTab>,
+    counts: List<Int>,
+    selectedIndex: Int,
+    onTabSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    var containerWidthPx by remember { mutableStateOf(0) }
+    val segmentCount = tabs.size.coerceAtLeast(1)
+    val indicatorWidthPx = if (containerWidthPx > 0) containerWidthPx / segmentCount else 0
+    val indicatorOffsetPx by animateIntAsState(
+        targetValue = indicatorWidthPx * selectedIndex,
+        animationSpec = tween(durationMillis = 250),
+        label = "indicatorOffset"
+    )
+
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp,
+        shadowElevation = 12.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .onSizeChanged { containerWidthPx = it.width }
+        ) {
+            if (indicatorWidthPx > 0) {
+                val indicatorWidthDp = with(density) { indicatorWidthPx.toDp() }
+                Surface(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(indicatorWidthDp)
+                        .offset { IntOffset(indicatorOffsetPx, 0) },
+                    shape = RoundedCornerShape(20.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    contentColor = contentColorFor(MaterialTheme.colorScheme.primary)
+                ) {}
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEachIndexed { index, tab ->
+                    val selected = index == selectedIndex
+                    val textColor = if (selected) {
+                        contentColorFor(MaterialTheme.colorScheme.primary)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                    val label = buildString {
+                        append(tab.title)
+                        if (index in counts.indices) {
+                            append(" (")
+                            append(counts[index])
+                            append(')')
+                        }
+                    }
+                    val interactionSource = remember(index) { MutableInteractionSource() }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(20.dp))
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                if (!selected) {
+                                    onTabSelected(index)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = textColor,
+                            modifier = Modifier.padding(horizontal = 8.dp),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun ReminderSummaryCard(
