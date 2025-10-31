@@ -1,6 +1,7 @@
 package com.lentikr.reminder.ui.settings
 
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,6 +51,36 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     var isProcessing by remember { mutableStateOf(false) }
+    val backupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                isProcessing = true
+                val message = try {
+                    viewModel.backupToUri(context, uri)
+                } finally {
+                    isProcessing = false
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            coroutineScope.launch {
+                isProcessing = true
+                val message = try {
+                    viewModel.restoreFromUri(context, uri)
+                } finally {
+                    isProcessing = false
+                }
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -81,28 +113,22 @@ fun SettingsScreen(
             HorizontalDivider()
             SettingsActionItem(
                 title = "备份到本地",
-                description = "导出所有提醒数据到应用专属文件夹。",
+                description = "选择任意位置导出所有提醒数据为 JSON 文件。",
                 icon = Icons.Filled.Backup,
                 enabled = !isProcessing
             ) {
-                coroutineScope.launch {
-                    isProcessing = true
-                    val message = viewModel.backupToLocal(context)
-                    snackbarHostState.showSnackbar(message)
-                    isProcessing = false
+                if (!isProcessing) {
+                    backupLauncher.launch(viewModel.generateBackupFileName())
                 }
             }
             SettingsActionItem(
                 title = "从备份恢复",
-                description = "读取最近的本地备份并覆盖当前数据。",
+                description = "从手动选择的 JSON 备份文件恢复数据。",
                 icon = Icons.Filled.Restore,
                 enabled = !isProcessing
             ) {
-                coroutineScope.launch {
-                    isProcessing = true
-                    val message = viewModel.restoreFromLocal(context)
-                    snackbarHostState.showSnackbar(message)
-                    isProcessing = false
+                if (!isProcessing) {
+                    restoreLauncher.launch(arrayOf("application/json"))
                 }
             }
         }
@@ -148,5 +174,3 @@ private fun SettingsActionItem(
         }
     }
 }
-
-

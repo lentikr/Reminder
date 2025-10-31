@@ -3,10 +3,11 @@
 package com.lentikr.reminder.ui.settings
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderRepository
-import java.io.File
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -17,38 +18,38 @@ import kotlinx.serialization.json.Json
 
 class SettingsViewModel(private val reminderRepository: ReminderRepository) : ViewModel() {
 
-    suspend fun backupToLocal(context: Context): String = withContext(Dispatchers.IO) {
+    fun generateBackupFileName(): String {
+        val timestamp = LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.getDefault()))
+        return "reminder-backup-$timestamp.json"
+    }
+
+    suspend fun backupToUri(context: Context, targetUri: Uri): String = withContext(Dispatchers.IO) {
         return@withContext try {
             val reminders = reminderRepository.getAllRemindersStream().first()
             if (reminders.isEmpty()) {
                 return@withContext "没有可备份的数据"
             }
-            val backupDir = context.getExternalFilesDir(null) ?: context.filesDir
-            if (!backupDir.exists()) {
-                backupDir.mkdirs()
-            }
-            val timestamp = java.time.LocalDateTime.now()
-                .format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.getDefault()))
-            val backupFile = File(backupDir, "reminder-backup-$timestamp.json")
-            backupFile.writeText(Json.encodeToString(reminders))
-            "备份完成：${backupFile.absolutePath}"
+
+            val json = Json.encodeToString(reminders)
+            context.contentResolver.openOutputStream(targetUri)?.use { output ->
+                output.write(json.toByteArray())
+                output.flush()
+            } ?: return@withContext "备份失败：无法写入目标位置"
+
+            "备份完成"
         } catch (e: Exception) {
             "备份失败：${e.localizedMessage ?: "未知错误"}"
         }
     }
 
-    suspend fun restoreFromLocal(context: Context): String = withContext(Dispatchers.IO) {
-        val backupDir = context.getExternalFilesDir(null) ?: context.filesDir
-        val latestFile = backupDir
-            .listFiles { file -> file.name.startsWith("reminder-backup") && file.extension == "json" }
-            ?.maxByOrNull { it.lastModified() }
-
-        if (latestFile == null || !latestFile.exists()) {
-            return@withContext "未找到备份文件"
-        }
-
+    suspend fun restoreFromUri(context: Context, sourceUri: Uri): String = withContext(Dispatchers.IO) {
         return@withContext try {
-            val reminders = Json.decodeFromString<List<ReminderItem>>(latestFile.readText())
+            val json = context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                input.readBytes().decodeToString()
+            } ?: return@withContext "恢复失败：无法读取文件"
+
+            val reminders = Json.decodeFromString<List<ReminderItem>>(json)
             reminderRepository.deleteAllReminders()
             reminders.forEach { reminderRepository.insertReminder(it.copy(id = 0)) }
             "恢复完成，共导入 ${reminders.size} 条记录"
