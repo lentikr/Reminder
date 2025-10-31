@@ -15,7 +15,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -67,7 +67,9 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -207,11 +209,98 @@ fun ReminderApp() {
     }
 }
 
-private val ReminderCardShape = RoundedCornerShape(24.dp)
+private val ReminderCardShape = RoundedCornerShape(16.dp)
+
+private data class ReminderCardVisuals(
+    val headerColor: Color,
+    val headerContentColor: Color,
+    val cardBackground: Color,
+    val footerBackground: Color,
+    val footerDividerColor: Color,
+    val numberColor: Color,
+    val secondaryTextColor: Color
+)
 
 private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> Boolean) {
     COUNTDOWN("倒数日", { it.type == ReminderType.ANNUAL }),
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
+}
+
+@Composable
+private fun reminderCardVisuals(type: ReminderType): ReminderCardVisuals {
+    val isDark = isSystemInDarkTheme()
+    return if (!isDark) {
+        when (type) {
+            ReminderType.ANNUAL -> ReminderCardVisuals(
+                headerColor = Color(0xFF1E88E5),
+                headerContentColor = Color.White,
+                cardBackground = Color.White,
+                footerBackground = Color(0xFFF4F4F4),
+                footerDividerColor = Color(0xFFE0E0E0),
+                numberColor = Color(0xFF2C2C2C),
+                secondaryTextColor = Color(0xFF666666)
+            )
+            ReminderType.COUNT_UP -> ReminderCardVisuals(
+                headerColor = Color(0xFFF28C20),
+                headerContentColor = Color.White,
+                cardBackground = Color.White,
+                footerBackground = Color(0xFFF4F4F4),
+                footerDividerColor = Color(0xFFE0E0E0),
+                numberColor = Color(0xFF2C2C2C),
+                secondaryTextColor = Color(0xFF666666)
+            )
+        }
+    } else {
+        when (type) {
+            ReminderType.ANNUAL -> ReminderCardVisuals(
+                headerColor = Color(0xFF64B5F6),
+                headerContentColor = Color.White,
+                cardBackground = Color(0xFF1F1F1F),
+                footerBackground = Color(0xFF2B2B2B),
+                footerDividerColor = Color(0xFF353535),
+                numberColor = Color(0xFFECEFF1),
+                secondaryTextColor = Color(0xFFB0BEC5)
+            )
+            ReminderType.COUNT_UP -> ReminderCardVisuals(
+                headerColor = Color(0xFFF7A03A),
+                headerContentColor = Color.White,
+                cardBackground = Color(0xFF1F1F1F),
+                footerBackground = Color(0xFF2B2B2B),
+                footerDividerColor = Color(0xFF353535),
+                numberColor = Color(0xFFECEFF1),
+                secondaryTextColor = Color(0xFFB0BEC5)
+            )
+        }
+    }
+}
+
+@Composable
+private fun DayCountRow(dayCount: Int, visuals: ReminderCardVisuals) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        AutoResizeText(
+            text = dayCount.toString(),
+            style = MaterialTheme.typography.displayLarge.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = (-1).sp
+            ),
+            modifier = Modifier.alignByBaseline(),
+            color = visuals.numberColor
+        )
+        Text(
+            text = "天",
+            style = MaterialTheme.typography.bodyLarge,
+            color = visuals.secondaryTextColor,
+            modifier = Modifier
+                .alignByBaseline()
+                .padding(start = 6.dp)
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -571,8 +660,7 @@ private fun ReminderSummaryCard(
     onClick: () -> Unit
 ) {
     val today = LocalDate.now()
-    val highlightColor = categoryColor(reminder.category, MaterialTheme.colorScheme.primary)
-    val headerTextColor = contentColorFor(highlightColor)
+    val visuals = reminderCardVisuals(reminder.type)
 
     val (headerLabelSuffix, dayCount, referenceText) = when (reminder.type) {
         ReminderType.ANNUAL -> {
@@ -601,8 +689,11 @@ private fun ReminderSummaryCard(
     Card(
         modifier = modifier,
         shape = ReminderCardShape,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = visuals.cardBackground,
+            contentColor = visuals.numberColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         onClick = onClick
     ) {
         Column(
@@ -611,63 +702,52 @@ private fun ReminderSummaryCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
-                    .background(highlightColor)
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .background(visuals.headerColor)
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                Column {
-                    Text(
-                        text = headerTitle,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                        color = headerTextColor
-                    )
-                }
+                Text(
+                    text = headerTitle,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                    color = visuals.headerContentColor,
+                    maxLines = 1
+                )
             }
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                DayCountRow(
+                    dayCount = dayCount,
+                    visuals = visuals
+                )
+            }
+            HorizontalDivider(
+                modifier = Modifier.fillMaxWidth(),
+                thickness = 0.6.dp,
+                color = visuals.footerDividerColor
+            )
+            Surface(
+                color = visuals.footerBackground,
+                contentColor = visuals.secondaryTextColor,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
+                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(64.dp),
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    AutoResizeText(
-                        text = dayCount.toString(),
-                        style = MaterialTheme.typography.displayLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-1).sp
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(24.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "天",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(28.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AutoResizeText(
-                        text = referenceText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                AutoResizeText(
+                    text = referenceText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth(),
+                    color = visuals.secondaryTextColor
+                )
                 }
             }
         }
@@ -729,20 +809,6 @@ private fun EmptyStateCard(modifier: Modifier = Modifier) {
     }
 }
 
-private fun categoryColor(category: String, fallback: Color): Color {
-    if (category.isBlank()) return fallback
-    val palette = listOf(
-        Color(0xFF1E88E5),
-        Color(0xFF43A047),
-        Color(0xFFF4511E),
-        Color(0xFF6D4C41),
-        Color(0xFF8E24AA),
-        Color(0xFF00897B)
-    )
-    val index = kotlin.math.abs(category.lowercase(Locale.getDefault()).hashCode())
-    return palette[index % palette.size]
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun ReminderListScreenPreview() {
@@ -773,5 +839,3 @@ private fun ReminderSummaryCardPreview() {
         )
     }
 }
-
-
