@@ -630,24 +630,45 @@ private fun ReminderSummaryCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-               AutoResizeText(
-                   text = dayCount.toString(),
-                   style = MaterialTheme.typography.displayLarge.copy(
-                       fontWeight = FontWeight.Bold,
-                       letterSpacing = (-1).sp
-                   ),
-                   modifier = Modifier.fillMaxWidth()
-               )
-                Text(
-                    text = "天",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-               AutoResizeText(
-                   text = referenceText,
-                   style = MaterialTheme.typography.bodyMedium,
-                   modifier = Modifier.fillMaxWidth()
-               )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AutoResizeText(
+                        text = dayCount.toString(),
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-1).sp
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "天",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AutoResizeText(
+                        text = referenceText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
     }
@@ -752,7 +773,5 @@ private fun ReminderSummaryCardPreview() {
         )
     }
 }
-
-
 
 
