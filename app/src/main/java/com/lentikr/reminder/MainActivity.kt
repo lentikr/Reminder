@@ -14,9 +14,12 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -31,15 +34,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,6 +62,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,11 +75,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
@@ -213,6 +220,8 @@ fun ReminderApp() {
 
 private val ReminderCardShape = RoundedCornerShape(16.dp)
 
+private enum class ReminderViewMode { CARD, LIST }
+
 private data class ReminderCardVisuals(
     val headerColor: Color,
     val headerContentColor: Color,
@@ -226,6 +235,49 @@ private data class ReminderCardVisuals(
 private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> Boolean) {
     COUNTDOWN("倒数日", { it.type == ReminderType.ANNUAL }),
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
+}
+
+private data class ReminderDisplayInfo(
+    val headerTitle: String,
+    val dayCount: Int,
+    val referenceText: String,
+    val visuals: ReminderCardVisuals
+)
+
+@Composable
+private fun reminderDisplayInfo(reminder: ReminderItem): ReminderDisplayInfo {
+    val today = LocalDate.now()
+    val visuals = reminderCardVisuals(reminder.type)
+    val (headerLabelSuffix, dayCount, referenceText) = when (reminder.type) {
+        ReminderType.ANNUAL -> {
+            val nextDate = if (reminder.isLunar) {
+                CalendarUtil.getNextLunarDate(reminder.date)
+            } else {
+                var candidate = reminder.date.withYear(today.year)
+                if (candidate.isBefore(today)) {
+                    candidate = candidate.plusYears(1)
+                }
+                candidate
+            }
+            val daysRemaining = ChronoUnit.DAYS.between(today, nextDate).toInt()
+            val formattedDate = nextDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
+            Triple("还有", daysRemaining.coerceAtLeast(0), formattedDate)
+        }
+
+        ReminderType.COUNT_UP -> {
+            val daysElapsed = ChronoUnit.DAYS.between(reminder.date, today).toInt().coerceAtLeast(0) + 1
+            val formattedDate = reminder.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
+            Triple("第", daysElapsed, formattedDate)
+        }
+    }
+
+    val headerTitle = "${reminder.title} $headerLabelSuffix"
+    return ReminderDisplayInfo(
+        headerTitle = headerTitle,
+        dayCount = dayCount,
+        referenceText = referenceText,
+        visuals = visuals
+    )
 }
 
 @Composable
@@ -303,20 +355,23 @@ private fun DayCountRow(dayCount: Int, visuals: ReminderCardVisuals) {
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-1).sp
                 ),
-                modifier = Modifier.widthIn(max = availableNumberWidth),
+                modifier = Modifier
+                    .alignByBaseline()
+                    .widthIn(max = availableNumberWidth),
                 color = visuals.numberColor
             )
             Spacer(modifier = Modifier.width(spacing))
             Text(
                 text = suffixText,
                 style = suffixStyle,
-                color = visuals.secondaryTextColor
+                color = visuals.secondaryTextColor,
+                modifier = Modifier.alignByBaseline()
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ReminderListScreen(
     navController: NavController,
@@ -324,6 +379,7 @@ fun ReminderListScreen(
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
+    var viewMode by rememberSaveable { mutableStateOf(ReminderViewMode.CARD) }
     val pagerState = rememberPagerState { ReminderTab.entries.size }
     val coroutineScope = rememberCoroutineScope()
     val tabs = ReminderTab.entries.toTypedArray()
@@ -360,7 +416,8 @@ fun ReminderListScreen(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val filteredItems = reminderListUiState.itemList.filter(tabs[page].filter)
-                if (filteredItems.isEmpty()) {
+                val sections = buildReminderSections(filteredItems)
+                if (sections.isEmpty()) {
                     EmptyStateCard(
                         modifier = Modifier
                             .padding(horizontal = 24.dp, vertical = 32.dp)
@@ -368,7 +425,6 @@ fun ReminderListScreen(
                             .fillMaxWidth()
                     )
                 } else {
-                    val groupedSections = buildReminderSections(filteredItems)
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(
@@ -377,17 +433,27 @@ fun ReminderListScreen(
                             top = 16.dp,
                             bottom = listBottomPadding
                         ),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (viewMode == ReminderViewMode.CARD) 24.dp else 16.dp)
                     ) {
-                        groupedSections.forEach { section ->
-                            item(key = section.key) {
-                                ReminderSection(
-                                    title = section.title,
-                                    reminders = section.items,
-                                    onReminderClick = { reminderId ->
-                                        navController.navigate(Routes.editReminder(reminderId))
-                                    }
-                                )
+                        sections.forEach { section ->
+                            item(key = "${section.key}_${viewMode.name}") {
+                                if (viewMode == ReminderViewMode.CARD) {
+                                    ReminderSection(
+                                        title = section.title,
+                                        reminders = section.items,
+                                        onReminderClick = { reminderId ->
+                                            navController.navigate(Routes.editReminder(reminderId))
+                                        }
+                                    )
+                                } else {
+                                    ReminderListSection(
+                                        title = section.title,
+                                        reminders = section.items,
+                                        onReminderClick = { reminderId ->
+                                            navController.navigate(Routes.editReminder(reminderId))
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -404,7 +470,22 @@ fun ReminderListScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Spacer(modifier = Modifier.size(segmentedHeight))
+                    val toggleIcon = if (viewMode == ReminderViewMode.CARD) Icons.AutoMirrored.Filled.ViewList else Icons.Default.ViewModule
+                    FloatingActionButton(
+                        onClick = {
+                            viewMode = if (viewMode == ReminderViewMode.CARD) ReminderViewMode.LIST else ReminderViewMode.CARD
+                        },
+                        shape = CircleShape,
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(segmentedHeight)
+                    ) {
+                        Icon(
+                            imageVector = toggleIcon,
+                            contentDescription = "切换视图"
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
 
                     Box(
                         modifier = Modifier
@@ -572,6 +653,100 @@ private fun ReminderSection(
 }
 
 @Composable
+private fun ReminderListSection(
+    title: String,
+    reminders: List<ReminderItem>,
+    onReminderClick: (Int) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            reminders.forEach { reminder ->
+                ReminderListItem(
+                    reminder = reminder,
+                    onClick = { onReminderClick(reminder.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReminderListItem(
+    reminder: ReminderItem,
+    onClick: () -> Unit
+) {
+    val displayInfo = reminderDisplayInfo(reminder)
+    val visuals = displayInfo.visuals
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 1.dp,
+        shadowElevation = 1.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = displayInfo.headerTitle,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = displayInfo.referenceText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Surface(
+                color = visuals.headerColor,
+                contentColor = visuals.headerContentColor,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .widthIn(min = 88.dp)
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Text(
+                        text = displayInfo.dayCount.toString(),
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        maxLines = 1,
+                        modifier = Modifier.alignByBaseline()
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "天",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = visuals.headerContentColor.copy(alpha = 0.92f),
+                        modifier = Modifier.alignByBaseline()
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FloatingSegmentedTabs(
     tabs: Array<ReminderTab>,
     counts: List<Int>,
@@ -672,33 +847,9 @@ private fun ReminderSummaryCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    val today = LocalDate.now()
-    val visuals = reminderCardVisuals(reminder.type)
+    val displayInfo = reminderDisplayInfo(reminder)
+    val visuals = displayInfo.visuals
 
-    val (headerLabelSuffix, dayCount, referenceText) = when (reminder.type) {
-        ReminderType.ANNUAL -> {
-            val nextDate = if (reminder.isLunar) {
-                CalendarUtil.getNextLunarDate(reminder.date)
-            } else {
-                var candidate = reminder.date.withYear(today.year)
-                if (candidate.isBefore(today)) {
-                    candidate = candidate.plusYears(1)
-                }
-                candidate
-            }
-            val daysRemaining = ChronoUnit.DAYS.between(today, nextDate).toInt()
-            val formattedDate = nextDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
-            Triple("还有", daysRemaining.coerceAtLeast(0), formattedDate)
-        }
-
-        ReminderType.COUNT_UP -> {
-            val daysElapsed = ChronoUnit.DAYS.between(reminder.date, today).toInt().coerceAtLeast(0) + 1
-            val formattedDate = reminder.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
-            Triple("第", daysElapsed, formattedDate)
-        }
-    }
-
-    val headerTitle = "${reminder.title} $headerLabelSuffix"
     Card(
         modifier = modifier,
         shape = ReminderCardShape,
@@ -720,7 +871,7 @@ private fun ReminderSummaryCard(
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Text(
-                    text = headerTitle,
+                    text = displayInfo.headerTitle,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
                     color = visuals.headerContentColor,
                     maxLines = 1
@@ -732,7 +883,7 @@ private fun ReminderSummaryCard(
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 DayCountRow(
-                    dayCount = dayCount,
+                    dayCount = displayInfo.dayCount,
                     visuals = visuals
                 )
             }
@@ -755,12 +906,12 @@ private fun ReminderSummaryCard(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                AutoResizeText(
-                    text = referenceText,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth(),
-                    color = visuals.secondaryTextColor
-                )
+                    AutoResizeText(
+                        text = displayInfo.referenceText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth(),
+                        color = visuals.secondaryTextColor
+                    )
                 }
             }
         }
