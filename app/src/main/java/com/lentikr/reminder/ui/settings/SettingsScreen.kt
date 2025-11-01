@@ -35,6 +35,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.outlined.Autorenew
+import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +61,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lentikr.reminder.data.AppThemeOption
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import kotlinx.coroutines.launch
+import android.content.Intent
+import com.lentikr.reminder.R
+import androidx.core.net.toUri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -128,14 +135,14 @@ fun SettingsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(
-                text = "外观",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
-            )
-            HorizontalDivider()
-            ThemeSelectionCard(
-                selectedOption = selectedTheme,
-                usePureBlack = usePureBlack,
+    Text(
+        text = "外观",
+        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+    )
+    HorizontalDivider(modifier = Modifier.padding(bottom = 4.dp))
+    ThemeSelectionCard(
+        selectedOption = selectedTheme,
+        usePureBlack = usePureBlack,
                 onOptionSelected = { option ->
                     coroutineScope.launch {
                         viewModel.updateThemePreference(context, option)
@@ -154,7 +161,7 @@ fun SettingsScreen(
             HorizontalDivider()
             SettingsActionItem(
                 title = "备份到本地",
-                description = "导出所有提醒数据为 JSON 文件。",
+                description = "导出所有提醒数据为 JSON 文件",
                 icon = Icons.Filled.Backup,
                 enabled = !isProcessing
             ) {
@@ -164,13 +171,29 @@ fun SettingsScreen(
             }
             SettingsActionItem(
                 title = "从备份恢复",
-                description = "从 JSON 备份文件恢复数据。",
+                description = "从 JSON 备份文件恢复数据",
                 icon = Icons.Filled.Restore,
                 enabled = !isProcessing
             ) {
                 if (!isProcessing) {
                     restoreLauncher.launch(arrayOf("application/json"))
                 }
+            }
+
+            Text(
+                text = "关于",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+            )
+            HorizontalDivider()
+            SettingsActionItem(
+                title = "lentikr/Reminder",
+                description = "在 GitHub 查看项目源码和更新情况。",
+                icon = ImageVector.vectorResource(id = R.drawable.ic_github),
+                enabled = true
+            ) {
+                val intent = Intent(Intent.ACTION_VIEW,
+                    "https://github.com/lentikr/Reminder".toUri())
+                context.startActivity(intent)
             }
         }
     }
@@ -190,8 +213,8 @@ private fun ThemeSelectionCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(horizontal=16.dp, vertical=12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             ThemeModeSegmentedControl(
                 options = listOf(AppThemeOption.SYSTEM, AppThemeOption.LIGHT, AppThemeOption.DARK),
@@ -200,7 +223,6 @@ private fun ThemeSelectionCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             PureBlackModeRow(
-                enabled = selectedOption == AppThemeOption.DARK,
                 checked = usePureBlack,
                 onCheckedChange = onPureBlackToggle
             )
@@ -219,6 +241,11 @@ private fun ThemeModeSegmentedControl(
         AppThemeOption.LIGHT to "浅色",
         AppThemeOption.DARK to "深色"
     )
+    val optionIcons = mapOf(
+        AppThemeOption.SYSTEM to Icons.Outlined.Autorenew,
+        AppThemeOption.LIGHT to Icons.Outlined.WbSunny,
+        AppThemeOption.DARK to Icons.Outlined.DarkMode
+    )
     val segmentCount = options.size.coerceAtLeast(1)
     val backgroundColor by animateColorAsState(
         targetValue = MaterialTheme.colorScheme.surfaceColorAtElevation(1.dp),
@@ -227,7 +254,7 @@ private fun ThemeModeSegmentedControl(
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(72.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
     ) {
@@ -237,10 +264,7 @@ private fun ThemeModeSegmentedControl(
             targetValue = segmentWidth * selectedIndex,
             label = "ThemeHighlightOffset"
         )
-        val highlightColor by animateColorAsState(
-            targetValue = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
-            label = "ThemeHighlightColor"
-        )
+        val highlightColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
 
         Box(
             modifier = Modifier
@@ -266,7 +290,7 @@ private fun ThemeModeSegmentedControl(
                     },
                     label = "ThemeOptionColor$index"
                 )
-                Box(
+                Column(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -274,9 +298,17 @@ private fun ThemeModeSegmentedControl(
                         .selectable(
                             selected = isSelected,
                             onClick = { onOptionSelected(option) }
-                        ),
-                    contentAlignment = Alignment.Center
+                        )
+                        .padding(vertical = 4.dp, horizontal = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
+                    Icon(
+                        imageVector = optionIcons.getValue(option),
+                        contentDescription = optionLabels[option],
+                        tint = textColor
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = optionLabels[option].orEmpty(),
                         style = MaterialTheme.typography.labelLarge,
@@ -290,26 +322,9 @@ private fun ThemeModeSegmentedControl(
 
 @Composable
 private fun PureBlackModeRow(
-    enabled: Boolean,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    val labelColor by animateColorAsState(
-        targetValue = if (enabled) {
-            MaterialTheme.colorScheme.onSurface
-        } else {
-            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-        },
-        label = "PureBlackLabelColor"
-    )
-    val descriptionColor by animateColorAsState(
-        targetValue = if (enabled) {
-            MaterialTheme.colorScheme.onSurfaceVariant
-        } else {
-            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-        },
-        label = "PureBlackDescriptionColor"
-    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -322,18 +337,17 @@ private fun PureBlackModeRow(
             Text(
                 text = "纯黑模式",
                 style = MaterialTheme.typography.bodyLarge,
-                color = labelColor
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "在深色模式下使用纯黑背景，适合 AMOLED 屏幕节省电量。",
+                text = "深色模式下对AMOLED屏幕更省电",
                 style = MaterialTheme.typography.bodySmall,
-                color = descriptionColor
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         Switch(
             checked = checked,
             onCheckedChange = { onCheckedChange(it) },
-            enabled = enabled,
             colors = SwitchDefaults.colors(
                 checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = MaterialTheme.colorScheme.primary,
