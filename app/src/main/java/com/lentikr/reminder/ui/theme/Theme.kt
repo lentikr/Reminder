@@ -1,6 +1,5 @@
 package com.lentikr.reminder.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -9,7 +8,9 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.lentikr.reminder.data.AppThemeOption
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -35,19 +36,37 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun ReminderTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    themeOption: AppThemeOption = AppThemeOption.SYSTEM,
+    usePureBlack: Boolean = false,
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
+    val darkTheme = when (themeOption) {
+        AppThemeOption.SYSTEM -> isSystemInDarkTheme()
+        AppThemeOption.LIGHT -> false
+        AppThemeOption.DARK -> true
+    }
+
+    val context = LocalContext.current
+    val baseColorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val colorScheme = if (usePureBlack && darkTheme) {
+        baseColorScheme.copy(
+            background = Color.Black,
+            surface = Color(0xFF050505),
+            surfaceVariant = Color(0xFF121212),
+            surfaceTint = Color.Black
+        )
+    } else {
+        baseColorScheme
     }
 
     MaterialTheme(

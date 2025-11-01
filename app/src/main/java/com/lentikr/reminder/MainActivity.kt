@@ -105,6 +105,9 @@ import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
 import com.lentikr.reminder.data.viewModeFlow
 import com.lentikr.reminder.data.saveViewMode
+import com.lentikr.reminder.data.AppThemeOption
+import com.lentikr.reminder.data.themeOptionFlow
+import com.lentikr.reminder.data.pureBlackFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -118,7 +121,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            ReminderTheme {
+            val context = LocalContext.current
+            val themeFlow = remember(context) { themeOptionFlow(context) }
+            val themeOption by themeFlow.collectAsState(initial = AppThemeOption.SYSTEM)
+            val pureBlackModeFlow = remember(context) { pureBlackFlow(context) }
+            val usePureBlack by pureBlackModeFlow.collectAsState(initial = false)
+            ReminderTheme(themeOption = themeOption, usePureBlack = usePureBlack) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

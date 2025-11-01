@@ -7,12 +7,18 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderRepository
+import com.lentikr.reminder.data.AppThemeOption
+import com.lentikr.reminder.data.themeOptionFlow
+import com.lentikr.reminder.data.saveThemeOption
+import com.lentikr.reminder.data.pureBlackFlow
+import com.lentikr.reminder.data.savePureBlack
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.Flow
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 
@@ -22,6 +28,18 @@ class SettingsViewModel(private val reminderRepository: ReminderRepository) : Vi
         val timestamp = LocalDateTime.now()
             .format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss", Locale.getDefault()))
         return "reminder-backup-$timestamp.json"
+    }
+
+    fun themePreferenceFlow(context: Context): Flow<AppThemeOption> = themeOptionFlow(context)
+
+    fun pureBlackPreferenceFlow(context: Context): Flow<Boolean> = pureBlackFlow(context)
+
+    suspend fun updateThemePreference(context: Context, option: AppThemeOption) {
+        saveThemeOption(context, option)
+    }
+
+    suspend fun updatePureBlackPreference(context: Context, enabled: Boolean) {
+        savePureBlack(context, enabled)
     }
 
     suspend fun backupToUri(context: Context, targetUri: Uri): String = withContext(Dispatchers.IO) {
