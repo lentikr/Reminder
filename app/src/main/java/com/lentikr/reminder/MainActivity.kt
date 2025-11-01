@@ -57,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,6 +72,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.mutableIntStateOf
@@ -101,7 +103,10 @@ import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
+import com.lentikr.reminder.data.viewModeFlow
+import com.lentikr.reminder.data.saveViewMode
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -379,7 +384,24 @@ fun ReminderListScreen(
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
+    val context = LocalContext.current
     var viewMode by rememberSaveable { mutableStateOf(ReminderViewMode.CARD) }
+    var hasLoaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val saved = viewModeFlow(context).first()
+        val savedMode = saved?.let { runCatching { ReminderViewMode.valueOf(it) }.getOrNull() }
+        if (savedMode != null) {
+            viewMode = savedMode
+        }
+        hasLoaded = true
+    }
+
+    LaunchedEffect(viewMode, hasLoaded) {
+        if (hasLoaded) {
+            saveViewMode(context, viewMode.name)
+        }
+    }
     val pagerState = rememberPagerState { ReminderTab.entries.size }
     val coroutineScope = rememberCoroutineScope()
     val tabs = ReminderTab.entries.toTypedArray()
