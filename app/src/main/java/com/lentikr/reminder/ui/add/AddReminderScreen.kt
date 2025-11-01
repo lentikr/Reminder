@@ -55,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lentikr.reminder.data.ReminderType
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import com.lentikr.reminder.ui.theme.ReminderTheme
+import com.lentikr.reminder.util.CalendarUtil
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
@@ -76,6 +77,8 @@ fun AddReminderScreen(
     var isCategoryMenuExpanded by remember { mutableStateOf(false) }
     val density = LocalDensity.current
     var textFieldWidth by remember { mutableStateOf(0.dp) }
+    val zoneId = ZoneId.systemDefault()
+    val currentLunarLabel = remember(uiState.date) { CalendarUtil.getLunarMonthDayLabel(uiState.date) }
 
     val disabledTextFieldColors = OutlinedTextFieldDefaults.colors(
         disabledTextColor = MaterialTheme.colorScheme.onSurface,
@@ -132,9 +135,9 @@ fun AddReminderScreen(
             }
 
             if (showDatePicker) {
+                val initialMillis = uiState.date.atStartOfDay(zoneId).toInstant().toEpochMilli()
                 val datePickerState = rememberDatePickerState(
-                    initialSelectedDateMillis = uiState.date.atStartOfDay(ZoneId.systemDefault())
-                        .toInstant().toEpochMilli()
+                    initialSelectedDateMillis = initialMillis
                 )
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker = false },
@@ -143,7 +146,7 @@ fun AddReminderScreen(
                             onClick = {
                                 datePickerState.selectedDateMillis?.let { millis ->
                                     val newDate = Instant.ofEpochMilli(millis)
-                                        .atZone(ZoneId.systemDefault())
+                                        .atZone(zoneId)
                                         .toLocalDate()
                                     viewModel.updateUiState(uiState.copy(date = newDate))
                                 }
@@ -161,6 +164,15 @@ fun AddReminderScreen(
                 ) {
                     DatePicker(state = datePickerState)
                 }
+            }
+
+            if (uiState.isLunar) {
+                Text(
+                    text = "农历：$currentLunarLabel",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+                )
             }
 
             Row(

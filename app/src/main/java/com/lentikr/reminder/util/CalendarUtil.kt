@@ -2,8 +2,23 @@ package com.lentikr.reminder.util
 
 import com.tyme.solar.SolarDay
 import java.time.LocalDate
+import kotlin.math.abs
 
 object CalendarUtil {
+
+    private val LUNAR_DAY_STRINGS = arrayOf(
+        "初一", "初二", "初三", "初四", "初五",
+        "初六", "初七", "初八", "初九", "初十",
+        "十一", "十二", "十三", "十四", "十五",
+        "十六", "十七", "十八", "十九", "二十",
+        "廿一", "廿二", "廿三", "廿四", "廿五",
+        "廿六", "廿七", "廿八", "廿九", "三十"
+    )
+
+    private val LUNAR_MONTH_STRINGS = arrayOf(
+        "正月", "二月", "三月", "四月", "五月", "六月",
+        "七月", "八月", "九月", "十月", "冬月", "腊月"
+    )
 
     /**
      * Calculates the next occurrence of a given lunar date.
@@ -38,5 +53,25 @@ object CalendarUtil {
         }
 
         return LocalDate.of(nextSolarDay.getYear(), nextSolarDay.getMonth(), nextSolarDay.getDay())
+    }
+
+    fun getLunarMonthDayLabel(date: LocalDate): String {
+        val solar = SolarDay.fromYmd(
+            date.year,
+            date.monthValue,
+            date.dayOfMonth
+        )
+        val lunar = solar.getLunarDay()
+        val monthValue = lunar.getMonth()
+        val dayValue = lunar.getDay()
+        val isLeapMonth = monthValue < 0
+        val monthIndex = abs(monthValue) - 1
+        val dayIndex = dayValue - 1
+        val monthLabel = buildString {
+            if (isLeapMonth) append("闰")
+            append(LUNAR_MONTH_STRINGS.getOrNull(monthIndex) ?: "${abs(monthValue)}月")
+        }
+        val dayLabel = LUNAR_DAY_STRINGS.getOrNull(dayIndex) ?: dayValue.toString()
+        return "$monthLabel$dayLabel"
     }
 }
