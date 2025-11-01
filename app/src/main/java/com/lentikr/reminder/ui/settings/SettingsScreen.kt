@@ -15,8 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Backup
@@ -48,8 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,10 +63,12 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.lentikr.reminder.BuildConfig
 import com.lentikr.reminder.data.AppThemeOption
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import kotlinx.coroutines.launch
 import android.content.Intent
+import androidx.compose.ui.res.painterResource
 import com.lentikr.reminder.R
 import androidx.core.net.toUri
 
@@ -80,6 +87,7 @@ fun SettingsScreen(
     val selectedTheme by themePreferenceFlow.collectAsState(initial = AppThemeOption.SYSTEM)
     val pureBlackPreferenceFlow = remember(context) { viewModel.pureBlackPreferenceFlow(context) }
     val usePureBlack by pureBlackPreferenceFlow.collectAsState(initial = false)
+    val scrollState = rememberScrollState()
     val backupLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -132,6 +140,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -185,15 +194,61 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
             )
             HorizontalDivider()
+            AppInfoCard(
+                appName = stringResource(id = R.string.app_name),
+                versionName = BuildConfig.VERSION_NAME,
+                modifier = Modifier.fillMaxWidth()
+            )
             SettingsActionItem(
                 title = "lentikr/Reminder",
-                description = "在 GitHub 查看项目源码和更新情况。",
+                description = "在 GitHub 查看项目源码",
                 icon = ImageVector.vectorResource(id = R.drawable.ic_github),
                 enabled = true
             ) {
                 val intent = Intent(Intent.ACTION_VIEW,
                     "https://github.com/lentikr/Reminder".toUri())
                 context.startActivity(intent)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppInfoCard(
+    appName: String,
+    versionName: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_app_logo),
+                contentDescription = appName,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = appName,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+                )
+                Text(
+                    text = "版本 $versionName",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
