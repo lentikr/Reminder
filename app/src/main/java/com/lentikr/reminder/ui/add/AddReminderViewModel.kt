@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderRepository
 import com.lentikr.reminder.data.ReminderType
+import com.lentikr.reminder.data.RepeatInfo
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -88,6 +89,21 @@ class AddReminderViewModel(
             title.isNotBlank()
         }
     }
+
+    fun onShowRepeatDialog(show: Boolean) {
+        reminderUiState = reminderUiState.copy(showRepeatDialog = show)
+    }
+
+    fun onRepeatInfoChange(repeatInfo: RepeatInfo?) {
+        reminderUiState = reminderUiState.copy(repeatInfo = repeatInfo)
+    }
+
+    fun onLunarChange(isLunar: Boolean) {
+        reminderUiState = reminderUiState.copy(
+            isLunar = isLunar,
+            repeatInfo = null
+        )
+    }
 }
 
 /**
@@ -100,7 +116,9 @@ data class ReminderUiState(
     val type: ReminderType = ReminderType.ANNUAL,
     val isLunar: Boolean = false,
     val category: String = "",
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
+    val repeatInfo: RepeatInfo? = null,
+    val showRepeatDialog: Boolean = false
 )
 
 fun ReminderUiState.toReminderItem(): ReminderItem = ReminderItem(
@@ -110,7 +128,8 @@ fun ReminderUiState.toReminderItem(): ReminderItem = ReminderItem(
     type = type,
     isLunar = isLunar,
     category = category,
-    isPinned = isPinned
+    isPinned = isPinned,
+    repeatInfo = repeatInfo
 )
 
 fun ReminderItem.toReminderUiState(): ReminderUiState = ReminderUiState(
@@ -120,5 +139,6 @@ fun ReminderItem.toReminderUiState(): ReminderUiState = ReminderUiState(
     type = type,
     isLunar = isLunar,
     category = category,
-    isPinned = isPinned
+    isPinned = isPinned,
+    repeatInfo = repeatInfo
 )

@@ -1,5 +1,7 @@
 package com.lentikr.reminder.util
 
+import com.lentikr.reminder.data.ReminderItem
+import com.lentikr.reminder.data.RepeatUnit
 import com.tyme.solar.SolarDay
 import java.time.LocalDate
 import kotlin.math.abs
@@ -20,6 +22,82 @@ object CalendarUtil {
         "七月", "八月", "九月", "十月", "冬月", "腊月"
     )
 
+    fun calculateNextTargetDate(reminderItem: ReminderItem): LocalDate? {
+        val repeatInfo = reminderItem.repeatInfo
+        val today = LocalDate.now()
+
+        if (repeatInfo == null) {
+            return if (reminderItem.date.isBefore(today)) null else reminderItem.date
+        }
+
+        var currentDate = reminderItem.date
+
+        if (!reminderItem.isLunar) {
+            // Gregorian calculation
+            while (currentDate.isBefore(today)) {
+                currentDate = when (repeatInfo.unit) {
+                    RepeatUnit.DAY -> currentDate.plusDays(repeatInfo.interval.toLong())
+                    RepeatUnit.WEEK -> currentDate.plusWeeks(repeatInfo.interval.toLong())
+                    RepeatUnit.MONTH -> currentDate.plusMonths(repeatInfo.interval.toLong())
+                    RepeatUnit.YEAR -> currentDate.plusYears(repeatInfo.interval.toLong())
+                }
+            }
+            return currentDate
+        } else {
+            // Lunar calculation
+            while (currentDate.isBefore(today)) {
+                currentDate = when (repeatInfo.unit) {
+                    RepeatUnit.YEAR -> getNextLunarYearDate(currentDate, repeatInfo.interval)
+                    RepeatUnit.MONTH -> getNextLunarMonthDate(currentDate, repeatInfo.interval)
+                    // Lunar day/week repeats are not standard, treat them as gregorian.
+                    RepeatUnit.DAY -> currentDate.plusDays(repeatInfo.interval.toLong())
+                    RepeatUnit.WEEK -> currentDate.plusWeeks(repeatInfo.interval.toLong())
+                }
+            }
+            return currentDate
+        }
+    }
+
+    private fun getNextLunarYearDate(currentSolarDate: LocalDate, interval: Int): LocalDate {
+        val currentLunar = SolarDay.fromYmd(currentSolarDate.year, currentSolarDate.monthValue, currentSolarDate.dayOfMonth).getLunarDay()
+        val targetYear = currentLunar.getYear() + interval
+        var targetDay = currentLunar.getDay()
+        var nextLunar: com.tyme.lunar.LunarDay? = null
+        while (nextLunar == null && targetDay > 0) {
+            try {
+                nextLunar = com.tyme.lunar.LunarDay.fromYmd(targetYear, currentLunar.getMonth(), targetDay)
+            } catch (e: IllegalArgumentException) {
+                targetDay--
+            }
+        }
+        if (nextLunar == null) {
+            return currentSolarDate.plusYears(interval.toLong())
+        }
+        val nextSolar = nextLunar.getSolarDay()
+        return LocalDate.of(nextSolar.getYear(), nextSolar.getMonth(), nextSolar.getDay())
+    }
+
+    private fun getNextLunarMonthDate(currentSolarDate: LocalDate, interval: Int): LocalDate {
+        val currentLunarDay = SolarDay.fromYmd(currentSolarDate.year, currentSolarDate.monthValue, currentSolarDate.dayOfMonth).getLunarDay()
+        val currentLunarMonth = currentLunarDay.getLunarMonth()
+        val nextLunarMonth = currentLunarMonth.next(interval)
+        var targetDay = currentLunarDay.getDay()
+        var nextLunar: com.tyme.lunar.LunarDay? = null
+        while (nextLunar == null && targetDay > 0) {
+            try {
+                nextLunar = com.tyme.lunar.LunarDay.fromYmd(nextLunarMonth.getYear(), nextLunarMonth.getMonth(), targetDay)
+            } catch (e: IllegalArgumentException) {
+                targetDay--
+            }
+        }
+        if (nextLunar == null) {
+            return currentSolarDate.plusMonths(interval.toLong())
+        }
+        val nextSolar = nextLunar.getSolarDay()
+        return LocalDate.of(nextSolar.getYear(), nextSolar.getMonth(), nextSolar.getDay())
+    }
+
+
     /**
      * Calculates the next occurrence of a given lunar date.
      * @param originalSolarDate The original solar date stored in the database,
@@ -36,18 +114,35 @@ object CalendarUtil {
         val today = LocalDate.now()
         val todaySolar = SolarDay.fromYmd(today.year, today.monthValue, today.dayOfMonth)
 
-        val thisYearSolar = com.tyme.lunar.LunarDay.fromYmd(
-            today.year,
-            originalLunar.getMonth(),
-            originalLunar.getDay()
-        ).getSolarDay()
-
-        val nextSolarDay = if (thisYearSolar.isBefore(todaySolar)) {
+        val thisYearSolar = try {
             com.tyme.lunar.LunarDay.fromYmd(
-                today.year + 1,
+                today.year,
                 originalLunar.getMonth(),
                 originalLunar.getDay()
             ).getSolarDay()
+        } catch (e: IllegalArgumentException) {
+            // Handle cases like leap months that don't exist this year, or day 30 on a 29-day month.
+            com.tyme.lunar.LunarDay.fromYmd(
+                today.year,
+                originalLunar.getMonth(),
+                originalLunar.getDay() - 1
+            ).getSolarDay()
+        }
+
+        val nextSolarDay = if (thisYearSolar.isBefore(todaySolar)) {
+            try {
+                com.tyme.lunar.LunarDay.fromYmd(
+                    today.year + 1,
+                    originalLunar.getMonth(),
+                    originalLunar.getDay()
+                ).getSolarDay()
+            } catch (e: IllegalArgumentException) {
+                com.tyme.lunar.LunarDay.fromYmd(
+                    today.year + 1,
+                    originalLunar.getMonth(),
+                    originalLunar.getDay() - 1
+                ).getSolarDay()
+            }
         } else {
             thisYearSolar
         }

@@ -296,17 +296,26 @@ internal fun truncateTitle(title: String, maxLength: Int = 7, takeFirst: Int = 3
 internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean = false): ReminderDisplayInfo {
     val today = LocalDate.now()
     val visuals = reminderCardVisuals(reminder.type)
+
     val (headerLabelSuffix, dayCount, referenceText) = when (reminder.type) {
         ReminderType.ANNUAL -> {
-            val nextDate = if (reminder.isLunar) {
-                CalendarUtil.getNextLunarDate(reminder.date)
-            } else {
-                var candidate = reminder.date.withYear(today.year)
-                if (candidate.isBefore(today)) {
-                    candidate = candidate.plusYears(1)
+            val nextDate = CalendarUtil.calculateNextTargetDate(reminder)
+            if (nextDate == null) {
+                // This is a past, non-repeating event.
+                val formattedDate = reminder.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
+                val truncatedTitle = if (isDetailView) {
+                    truncateTitle(reminder.title, maxLength = 13, takeFirst = 6, takeLast = 6)
+                } else {
+                    truncateTitle(reminder.title)
                 }
-                candidate
+                return ReminderDisplayInfo(
+                    headerTitle = "$truncatedTitle 已结束",
+                    dayCount = 0,
+                    referenceText = formattedDate,
+                    visuals = visuals
+                )
             }
+
             val daysRemaining = ChronoUnit.DAYS.between(today, nextDate).toInt()
             val formattedDate = nextDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
             Triple("还有", daysRemaining.coerceAtLeast(0), formattedDate)
@@ -664,16 +673,13 @@ private fun reminderSortValue(reminder: ReminderItem): Int {
     val today = LocalDate.now()
     return when (reminder.type) {
         ReminderType.ANNUAL -> {
-            val nextDate = if (reminder.isLunar) {
-                CalendarUtil.getNextLunarDate(reminder.date)
+            val nextDate = CalendarUtil.calculateNextTargetDate(reminder)
+            if (nextDate != null) {
+                ChronoUnit.DAYS.between(today, nextDate).toInt()
             } else {
-                var candidate = reminder.date.withYear(today.year)
-                if (candidate.isBefore(today)) {
-                    candidate = candidate.plusYears(1)
-                }
-                candidate
+                // For past, non-repeating events, sort them at the end.
+                Int.MAX_VALUE
             }
-            ChronoUnit.DAYS.between(today, nextDate).toInt()
         }
 
         ReminderType.COUNT_UP -> {

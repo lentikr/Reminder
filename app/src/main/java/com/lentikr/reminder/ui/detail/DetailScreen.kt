@@ -36,6 +36,8 @@ import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+enum class CaptureAction { SHARE, SAVE }
+
 @ExperimentalComposeUiApi
  @Composable
  fun DetailScreen(
@@ -48,6 +50,7 @@ import java.time.LocalDate
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var captureAction by remember { mutableStateOf<CaptureAction?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.saveResult.collect { result ->
@@ -56,6 +59,26 @@ import java.time.LocalDate
                 is SaveResult.Failure -> "保存失败"
             }
             snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    LaunchedEffect(captureAction) {
+        if (captureAction != null) {
+            try {
+                val imageBitmap = captureController.captureAsync().await()
+                when (captureAction) {
+                    CaptureAction.SHARE -> viewModel.shareReminder(imageBitmap.asAndroidBitmap(), context)
+                    CaptureAction.SAVE -> viewModel.saveReminderAsImage(imageBitmap.asAndroidBitmap(), context)
+                    null -> { /* Do nothing */ }
+                }
+            } catch (error: Throwable) {
+                coroutineScope.launch {
+                    snackbarHostState.showSnackbar("操作失败，请重试")
+                }
+            } finally {
+                // 无论成功失败，都重置状态以移除 Composable
+                captureAction = null
+            }
         }
     }
 
@@ -73,7 +96,7 @@ import java.time.LocalDate
         }
     ) { paddingValues ->
         // The invisible composable for capture
-        if (reminderItem != null) {
+        if (captureAction != null && reminderItem != null) {
             Box(modifier = Modifier.offset(y = (10000).dp)) {
                 ShareableReminderImage(
                     reminderItem = reminderItem,
@@ -100,28 +123,10 @@ import java.time.LocalDate
             Spacer(modifier = Modifier.height(24.dp))
             ActionButtonsRow(
                 onShareClick = {
-                    coroutineScope.launch {
-                        try {
-                            val imageBitmap = captureController.captureAsync().await()
-                            viewModel.shareReminder(imageBitmap.asAndroidBitmap(), context)
-                        } catch (_: Throwable) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("截图失败，请重试")
-                            }
-                        }
-                    }
+                    captureAction = CaptureAction.SHARE
                 },
                 onSaveClick = {
-                    coroutineScope.launch {
-                        try {
-                            val imageBitmap = captureController.captureAsync().await()
-                            viewModel.saveReminderAsImage(imageBitmap.asAndroidBitmap(), context)
-                        } catch (_: Throwable) {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("截图失败，请重试")
-                            }
-                        }
-                    }
+                    captureAction = CaptureAction.SAVE
                 }
             )
         }

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,6 +54,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.lentikr.reminder.data.ReminderType
+import com.lentikr.reminder.data.RepeatInfo
+import com.lentikr.reminder.data.RepeatUnit
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
@@ -110,6 +113,7 @@ fun AddReminderScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // 1. 标题
             OutlinedTextField(
                 value = uiState.title,
                 onValueChange = { viewModel.updateUiState(uiState.copy(title = it)) },
@@ -118,6 +122,7 @@ fun AddReminderScreen(
                 singleLine = true
             )
 
+            // 2. 日期
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -166,15 +171,31 @@ fun AddReminderScreen(
                 }
             }
 
-            if (uiState.isLunar) {
-                Text(
-                    text = "农历：$currentLunarLabel",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 8.dp)
-                )
-            }
+            // 3. 农历
+            SettingSwitch(
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("农历", style = MaterialTheme.typography.bodyLarge)
+                        if (uiState.isLunar) {
+                            Text(
+                                text = "：$currentLunarLabel",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                },
+                checked = uiState.isLunar,
+                onCheckedChange = { viewModel.onLunarChange(it) }
+            )
 
+            // 4. 置顶
+            SettingSwitch(
+                title = { Text("置顶", style = MaterialTheme.typography.bodyLarge) },
+                checked = uiState.isPinned,
+                onCheckedChange = { viewModel.updateUiState(uiState.copy(isPinned = it)) }
+            )
+
+            // 5. 类型
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -200,12 +221,7 @@ fun AddReminderScreen(
                 }
             }
 
-            SettingSwitch(
-                title = "农历",
-                checked = uiState.isLunar,
-                onCheckedChange = { viewModel.updateUiState(uiState.copy(isLunar = it)) }
-            )
-
+            // 6. 分类
             Column(modifier = Modifier.fillMaxWidth()) {
                 val filteredOptions = remember(uiState.category, categoryOptions) {
                     val input = uiState.category.trim()
@@ -297,11 +313,31 @@ fun AddReminderScreen(
                 }
             }
 
-            SettingSwitch(
-                title = "置顶",
-                checked = uiState.isPinned,
-                onCheckedChange = { viewModel.updateUiState(uiState.copy(isPinned = it)) }
-            )
+            // 7. 重复
+            if (uiState.type == ReminderType.ANNUAL) {
+                SettingItem(
+                    title = "重复",
+                    value = repeatInfoToString(uiState.repeatInfo),
+                    onClick = { viewModel.onShowRepeatDialog(true) }
+                )
+            }
+
+            if (uiState.showRepeatDialog) {
+                val availableUnits = if (uiState.isLunar) {
+                    listOf(RepeatUnit.MONTH, RepeatUnit.YEAR)
+                } else {
+                    RepeatUnit.entries.toList()
+                }
+                RepeatSettingDialog(
+                    repeatInfo = uiState.repeatInfo,
+                    availableUnits = availableUnits,
+                    onDismissRequest = { viewModel.onShowRepeatDialog(false) },
+                    onConfirm = {
+                        viewModel.onRepeatInfoChange(it)
+                        viewModel.onShowRepeatDialog(false)
+                    }
+                )
+            }
 
             Spacer(Modifier.weight(1f))
 
@@ -358,16 +394,57 @@ fun AddReminderScreen(
                 Text(if (isEditing) "保存修改" else "保存")
             }
         }
+
+        }
+    }
+
+@Composable
+private fun SettingItem(title: String, value: String, onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 4.dp)
+    ) {
+        Text(title, style = MaterialTheme.typography.bodyLarge)
+        Spacer(Modifier.weight(1f))
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private fun repeatInfoToString(repeatInfo: RepeatInfo?): String {
+    return when (repeatInfo) {
+        null -> "不重复"
+        else -> {
+            val unitString = when (repeatInfo.unit) {
+                RepeatUnit.DAY -> "天"
+                RepeatUnit.WEEK -> "周"
+                RepeatUnit.MONTH -> "个月"
+                RepeatUnit.YEAR -> "年"
+            }
+            if (repeatInfo.interval == 1) "每${unitString.removePrefix("个")}" else "每 ${repeatInfo.interval} $unitString"
+        }
     }
 }
 
 @Composable
-private fun SettingSwitch(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SettingSwitch(title: @Composable () -> Unit, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(title, style = MaterialTheme.typography.bodyLarge)
+        title()
         Spacer(Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
@@ -380,4 +457,3 @@ private fun AddReminderScreenPreview() {
         AddReminderScreen(onNavigateUp = {})
     }
 }
-

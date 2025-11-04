@@ -1,6 +1,9 @@
 package com.lentikr.reminder.data
 
 import androidx.room.TypeConverter
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.time.LocalDate
 
 class TypeConverters {
@@ -19,4 +22,14 @@ class TypeConverters {
 
     @TypeConverter
     fun fromReminderType(value: ReminderType) = value.name
+
+    @TypeConverter
+    fun fromRepeatInfo(repeatInfo: RepeatInfo?): String? {
+        return repeatInfo?.let { Json.encodeToString(it) }
+    }
+
+    @TypeConverter
+    fun toRepeatInfo(json: String?): RepeatInfo? {
+        return json?.let { Json.decodeFromString<RepeatInfo>(it) }
+    }
 }

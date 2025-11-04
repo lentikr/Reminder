@@ -35,9 +35,8 @@ class DetailViewModel(
         viewModelScope.launch {
             reminderRepository.getReminderStream(reminderId)
                 .filterNotNull()
-                .first()
-                .let {
-                    _uiState.value = DetailUiState(reminderItem = it)
+                .collect { reminder ->
+                    _uiState.update { it.copy(reminderItem = reminder) }
                 }
         }
     }

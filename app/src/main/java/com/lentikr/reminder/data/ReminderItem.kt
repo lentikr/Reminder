@@ -10,6 +10,21 @@ import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.ExperimentalSerializationApi
 import java.time.LocalDate
 
+@Serializable
+enum class RepeatUnit {
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR
+}
+
+@Serializable
+data class RepeatInfo(
+    val interval: Int,
+    val unit: RepeatUnit,
+    val endDate: @Serializable(with = LocalDateSerializer::class) LocalDate? = null
+)
+
 enum class ReminderType {
     ANNUAL, // For recurring events like birthdays
     COUNT_UP // For counting days since an event
@@ -26,7 +41,8 @@ data class ReminderItem(
     val type: ReminderType,
     val isLunar: Boolean,
     val category: String,
-    val isPinned: Boolean
+    val isPinned: Boolean,
+    val repeatInfo: RepeatInfo? = null
 )
 
 @Serializer(forClass = LocalDate::class)
