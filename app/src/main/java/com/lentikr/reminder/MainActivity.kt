@@ -17,7 +17,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -102,6 +101,7 @@ import com.lentikr.reminder.ui.common.AppViewModelProvider
 import com.lentikr.reminder.ui.common.AutoResizeText
 import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
+import com.lentikr.reminder.ui.theme.LocalAppDarkTheme
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import com.lentikr.reminder.util.CalendarUtil
 import com.lentikr.reminder.data.viewModeFlow
@@ -344,49 +344,35 @@ internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean =
 
 @Composable
 private fun reminderCardVisuals(type: ReminderType): ReminderCardVisuals {
-    val isDark = isSystemInDarkTheme()
+    val isDark = LocalAppDarkTheme.current
+
+    val headerColor = when {
+        !isDark && type == ReminderType.ANNUAL -> Color(0xFF1E88E5)
+        !isDark && type == ReminderType.COUNT_UP -> Color(0xFFF28C20)
+        isDark && type == ReminderType.ANNUAL -> Color(0xFF64B5F6)
+        else -> Color(0xFFF7A03A) // isDark && COUNT_UP
+    }
+
     return if (!isDark) {
-        when (type) {
-            ReminderType.ANNUAL -> ReminderCardVisuals(
-                headerColor = Color(0xFF1E88E5),
-                headerContentColor = Color.White,
-                cardBackground = Color.White,
-                footerBackground = Color(0xFFF4F4F4),
-                footerDividerColor = Color(0xFFE0E0E0),
-                numberColor = Color(0xFF2C2C2C),
-                secondaryTextColor = Color(0xFF666666)
-            )
-            ReminderType.COUNT_UP -> ReminderCardVisuals(
-                headerColor = Color(0xFFF28C20),
-                headerContentColor = Color.White,
-                cardBackground = Color.White,
-                footerBackground = Color(0xFFF4F4F4),
-                footerDividerColor = Color(0xFFE0E0E0),
-                numberColor = Color(0xFF2C2C2C),
-                secondaryTextColor = Color(0xFF666666)
-            )
-        }
+        ReminderCardVisuals(
+            headerColor = headerColor,
+            headerContentColor = Color.White,
+            cardBackground = Color.White,
+            footerBackground = Color(0xFFF4F4F4),
+            footerDividerColor = Color(0xFFE0E0E0),
+            numberColor = Color(0xFF2C2C2C),
+            secondaryTextColor = Color(0xFF666666)
+        )
     } else {
-        when (type) {
-            ReminderType.ANNUAL -> ReminderCardVisuals(
-                headerColor = Color(0xFF64B5F6),
-                headerContentColor = Color.White,
-                cardBackground = Color(0xFF1F1F1F),
-                footerBackground = Color(0xFF2B2B2B),
-                footerDividerColor = Color(0xFF353535),
-                numberColor = Color(0xFFECEFF1),
-                secondaryTextColor = Color(0xFFB0BEC5)
-            )
-            ReminderType.COUNT_UP -> ReminderCardVisuals(
-                headerColor = Color(0xFFF7A03A),
-                headerContentColor = Color.White,
-                cardBackground = Color(0xFF1F1F1F),
-                footerBackground = Color(0xFF2B2B2B),
-                footerDividerColor = Color(0xFF353535),
-                numberColor = Color(0xFFECEFF1),
-                secondaryTextColor = Color(0xFFB0BEC5)
-            )
-        }
+        ReminderCardVisuals(
+            headerColor = headerColor,
+            headerContentColor = Color.White,
+            cardBackground = Color(0xFF1F1F1F),
+            footerBackground = Color(0xFF2B2B2B),
+            footerDividerColor = Color(0xFF353535),
+            numberColor = Color(0xFFECEFF1),
+            secondaryTextColor = Color(0xFFB0BEC5)
+        )
     }
 }
 
