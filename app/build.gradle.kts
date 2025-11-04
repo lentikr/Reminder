@@ -44,8 +44,8 @@ android {
         applicationId = "com.lentikr.reminder"
         minSdk = 28
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.6.1"
+        versionCode = 10
+        versionName = "1.6.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -101,6 +101,8 @@ dependencies {
     implementation(libs.accompanist.pager.indicators)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.capturable)
+    implementation(libs.compose.m3.picker)
+    implementation(libs.kotlinx.collections.immutable)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
