@@ -79,7 +79,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -99,6 +99,7 @@ import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderType
 import com.lentikr.reminder.ui.add.AddReminderScreen
 import com.lentikr.reminder.ui.common.AppViewModelProvider
+import com.lentikr.reminder.ui.common.AutoResizeText
 import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
 import com.lentikr.reminder.ui.theme.ReminderTheme
@@ -108,6 +109,7 @@ import com.lentikr.reminder.data.saveViewMode
 import com.lentikr.reminder.data.AppThemeOption
 import com.lentikr.reminder.data.themeOptionFlow
 import com.lentikr.reminder.data.pureBlackFlow
+import com.lentikr.reminder.ui.detail.DetailScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -140,14 +142,19 @@ class MainActivity : ComponentActivity() {
 
 object Routes {
     const val REMINDER_LIST = "reminder_list"
-    const val ADD_REMINDER = "add_reminder"
+    const val ADD_REMINDER_BASE = "add_reminder"
+    const val ADD_REMINDER = ADD_REMINDER_BASE
     private const val EDIT_REMINDER_BASE = "edit_reminder"
     const val EDIT_REMINDER_PATTERN = "$EDIT_REMINDER_BASE/{reminderId}"
     const val SETTINGS = "settings"
+    const val DETAIL_REMINDER_BASE = "detail_reminder"
+    const val DETAIL_REMINDER_PATTERN = "$DETAIL_REMINDER_BASE/{reminderId}"
 
     fun editReminder(reminderId: Int): String = "$EDIT_REMINDER_BASE/$reminderId"
+    fun detailReminder(reminderId: Int): String = "$DETAIL_REMINDER_BASE/$reminderId"
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ReminderApp() {
     val navController = rememberNavController()
@@ -159,24 +166,22 @@ fun ReminderApp() {
             Routes.REMINDER_LIST,
             exitTransition = {
                 when {
-                    targetState.destination.route == Routes.SETTINGS ->
-                        slideOutHorizontally(animationSpec = tween(400), targetOffsetX = { -it })
-                    targetState.destination.route == Routes.ADD_REMINDER ||
-                            targetState.destination.route?.startsWith("edit_reminder") == true ->
-                        scaleOut(animationSpec = tween(400), targetScale = 0.9f) +
-                                fadeOut(animationSpec = tween(400), targetAlpha = 0.7f)
-                    else -> fadeOut(animationSpec = tween(400))
+                    targetState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        fadeOut() + scaleOut(transformOrigin = TransformOrigin(0.5f, 0.5f))
+                    targetState.destination.route?.startsWith(Routes.ADD_REMINDER_BASE) == true ||
+                    targetState.destination.route?.startsWith("edit_reminder") == true ->
+                        fadeOut() + scaleOut(transformOrigin = TransformOrigin(1f, 1f))
+                    else -> null
                 }
             },
             popEnterTransition = {
                 when {
-                    initialState.destination.route == Routes.SETTINGS ->
-                        slideInHorizontally(animationSpec = tween(400), initialOffsetX = { -it })
-                    initialState.destination.route == Routes.ADD_REMINDER ||
-                            initialState.destination.route?.startsWith("edit_reminder") == true ->
-                        scaleIn(animationSpec = tween(400), initialScale = 0.9f) +
-                                fadeIn(animationSpec = tween(400), initialAlpha = 0.7f)
-                    else -> fadeIn(animationSpec = tween(400))
+                    initialState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        fadeIn() + scaleIn(transformOrigin = TransformOrigin(0.5f, 0.5f))
+                    initialState.destination.route?.startsWith(Routes.ADD_REMINDER_BASE) == true ||
+                    initialState.destination.route?.startsWith("edit_reminder") == true ->
+                        fadeIn() + scaleIn(transformOrigin = TransformOrigin(1f, 1f))
+                    else -> fadeIn()
                 }
             }
         ) {
@@ -185,16 +190,20 @@ fun ReminderApp() {
         composable(
             Routes.ADD_REMINDER,
             enterTransition = {
-                scaleIn(
-                    animationSpec = tween(400),
-                    transformOrigin = TransformOrigin(0.9f, 0.95f)
-                ) + fadeIn(animationSpec = tween(400))
+                when {
+                    initialState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        scaleIn(transformOrigin = TransformOrigin(1f, 0f)) + fadeIn()
+                    else ->
+                        scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn()
+                }
             },
             popExitTransition = {
-                scaleOut(
-                    animationSpec = tween(400),
-                    transformOrigin = TransformOrigin(0.9f, 0.95f)
-                ) + fadeOut(animationSpec = tween(400))
+                when {
+                    targetState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        scaleOut(transformOrigin = TransformOrigin(1f, 0f)) + fadeOut()
+                    else ->
+                        scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()
+                }
             }
         ) {
             AddReminderScreen(onNavigateUp = { navController.navigateUp() })
@@ -203,19 +212,35 @@ fun ReminderApp() {
             route = Routes.EDIT_REMINDER_PATTERN,
             arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
             enterTransition = {
-                scaleIn(
-                    animationSpec = tween(400),
-                    transformOrigin = TransformOrigin(0.9f, 0.95f)
-                ) + fadeIn(animationSpec = tween(400))
+                when {
+                    initialState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        scaleIn(transformOrigin = TransformOrigin(1f, 0f)) + fadeIn()
+                    else ->
+                        scaleIn(transformOrigin = TransformOrigin(1f, 1f)) + fadeIn()
+                }
             },
             popExitTransition = {
-                scaleOut(
-                    animationSpec = tween(400),
-                    transformOrigin = TransformOrigin(0.9f, 0.95f)
-                ) + fadeOut(animationSpec = tween(400))
+                when {
+                    targetState.destination.route?.startsWith(Routes.DETAIL_REMINDER_BASE) == true ->
+                        scaleOut(transformOrigin = TransformOrigin(1f, 0f)) + fadeOut()
+                    else ->
+                        scaleOut(transformOrigin = TransformOrigin(1f, 1f)) + fadeOut()
+                }
             }
         ) {
             AddReminderScreen(onNavigateUp = { navController.navigateUp() })
+        }
+        composable(
+            route = Routes.DETAIL_REMINDER_PATTERN,
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
+            enterTransition = {
+                scaleIn(transformOrigin = TransformOrigin(0.5f, 0.5f)) + fadeIn()
+            },
+            popExitTransition = {
+                scaleOut(transformOrigin = TransformOrigin(0.5f, 0.5f)) + fadeOut()
+            }
+        ) {
+            DetailScreen(navController = navController)
         }
         composable(
             Routes.SETTINGS,
@@ -235,7 +260,7 @@ private val ReminderCardShape = RoundedCornerShape(16.dp)
 
 private enum class ReminderViewMode { CARD, LIST }
 
-private data class ReminderCardVisuals(
+data class ReminderCardVisuals(
     val headerColor: Color,
     val headerContentColor: Color,
     val cardBackground: Color,
@@ -250,15 +275,25 @@ private enum class ReminderTab(val title: String, val filter: (ReminderItem) -> 
     COUNTUP("正数日", { it.type == ReminderType.COUNT_UP })
 }
 
-private data class ReminderDisplayInfo(
+data class ReminderDisplayInfo(
     val headerTitle: String,
     val dayCount: Int,
     val referenceText: String,
     val visuals: ReminderCardVisuals
 )
 
+internal fun truncateTitle(title: String, maxLength: Int = 7, takeFirst: Int = 3, takeLast: Int = 3): String {
+    if (title.length <= maxLength) {
+        return title
+    }
+    if (title.length <= takeFirst + takeLast) {
+        return title
+    }
+    return "${title.take(takeFirst)}...${title.takeLast(takeLast)}"
+}
+
 @Composable
-private fun reminderDisplayInfo(reminder: ReminderItem): ReminderDisplayInfo {
+internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean = false): ReminderDisplayInfo {
     val today = LocalDate.now()
     val visuals = reminderCardVisuals(reminder.type)
     val (headerLabelSuffix, dayCount, referenceText) = when (reminder.type) {
@@ -284,7 +319,12 @@ private fun reminderDisplayInfo(reminder: ReminderItem): ReminderDisplayInfo {
         }
     }
 
-    val headerTitle = "${reminder.title} $headerLabelSuffix"
+    val truncatedTitle = if (isDetailView) {
+        truncateTitle(reminder.title, maxLength = 13, takeFirst = 6, takeLast = 6)
+    } else {
+        truncateTitle(reminder.title)
+    }
+    val headerTitle = "$truncatedTitle $headerLabelSuffix"
     return ReminderDisplayInfo(
         headerTitle = headerTitle,
         dayCount = dayCount,
@@ -472,7 +512,7 @@ fun ReminderListScreen(
                                         title = section.title,
                                         reminders = section.items,
                                         onReminderClick = { reminderId ->
-                                            navController.navigate(Routes.editReminder(reminderId))
+                                            navController.navigate(Routes.detailReminder(reminderId))
                                         }
                                     )
                                 } else {
@@ -480,7 +520,7 @@ fun ReminderListScreen(
                                         title = section.title,
                                         reminders = section.items,
                                         onReminderClick = { reminderId ->
-                                            navController.navigate(Routes.editReminder(reminderId))
+                                            navController.navigate(Routes.detailReminder(reminderId))
                                         }
                                     )
                                 }
@@ -733,8 +773,7 @@ private fun ReminderListItem(
                 Text(
                     text = displayInfo.headerTitle,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 1
                 )
                 Text(
                     text = displayInfo.referenceText,
@@ -948,34 +987,6 @@ private fun ReminderSummaryCard(
     }
 }
 
-@Composable
-fun AutoResizeText(
-   text: String,
-   style: TextStyle,
-   modifier: Modifier = Modifier,
-   color: Color = Color.Unspecified
-) {
-   var resizedTextStyle by remember { mutableStateOf(style) }
-   var shouldShrink by remember(text) { mutableStateOf(true) }
-
-   Text(
-       text = text,
-       color = color,
-       modifier = modifier,
-       textAlign = TextAlign.Center,
-       style = resizedTextStyle,
-       softWrap = false,
-       onTextLayout = { result ->
-           if (shouldShrink && result.didOverflowWidth) {
-               resizedTextStyle = resizedTextStyle.copy(
-                   fontSize = resizedTextStyle.fontSize * 0.95
-               )
-           } else {
-               shouldShrink = false
-           }
-       }
-   )
-}
 
 @Composable
 private fun EmptyStateCard(modifier: Modifier = Modifier) {

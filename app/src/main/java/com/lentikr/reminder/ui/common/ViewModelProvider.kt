@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.lentikr.reminder.ReminderApplication
 import com.lentikr.reminder.ui.add.AddReminderViewModel
+import com.lentikr.reminder.ui.detail.DetailViewModel
 import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsViewModel
 
@@ -21,6 +22,14 @@ object AppViewModelProvider {
             AddReminderViewModel(
                 reminderRepository = application.container.reminderRepository,
                 savedStateHandle = createSavedStateHandle()
+            )
+        }
+
+        // Initializer for DetailViewModel
+        initializer {
+            DetailViewModel(
+                savedStateHandle = this.createSavedStateHandle(),
+                reminderRepository = reminderApplication().container.reminderRepository
             )
         }
 
@@ -40,5 +49,5 @@ object AppViewModelProvider {
  * Extension function to queries for Application object and returns an instance of
  * ReminderApplication.
  */
-fun CreationExtras.reminderApplication(): ReminderApplication = 
+fun CreationExtras.reminderApplication(): ReminderApplication =
     (this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as ReminderApplication)
