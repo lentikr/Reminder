@@ -98,58 +98,6 @@ object CalendarUtil {
     }
 
 
-    /**
-     * Calculates the next occurrence of a given lunar date.
-     * @param originalSolarDate The original solar date stored in the database,
-     * which corresponds to the initial lunar event (e.g., 2001-04-12 for Lunar 2001-03-20).
-     * @return The upcoming solar date for that lunar anniversary.
-     */
-    fun getNextLunarDate(originalSolarDate: LocalDate): LocalDate {
-        val originalLunar = SolarDay.fromYmd(
-            originalSolarDate.year,
-            originalSolarDate.monthValue,
-            originalSolarDate.dayOfMonth
-        ).getLunarDay()
-
-        val today = LocalDate.now()
-        val todaySolar = SolarDay.fromYmd(today.year, today.monthValue, today.dayOfMonth)
-
-        val thisYearSolar = try {
-            com.tyme.lunar.LunarDay.fromYmd(
-                today.year,
-                originalLunar.getMonth(),
-                originalLunar.getDay()
-            ).getSolarDay()
-        } catch (e: IllegalArgumentException) {
-            // Handle cases like leap months that don't exist this year, or day 30 on a 29-day month.
-            com.tyme.lunar.LunarDay.fromYmd(
-                today.year,
-                originalLunar.getMonth(),
-                originalLunar.getDay() - 1
-            ).getSolarDay()
-        }
-
-        val nextSolarDay = if (thisYearSolar.isBefore(todaySolar)) {
-            try {
-                com.tyme.lunar.LunarDay.fromYmd(
-                    today.year + 1,
-                    originalLunar.getMonth(),
-                    originalLunar.getDay()
-                ).getSolarDay()
-            } catch (e: IllegalArgumentException) {
-                com.tyme.lunar.LunarDay.fromYmd(
-                    today.year + 1,
-                    originalLunar.getMonth(),
-                    originalLunar.getDay() - 1
-                ).getSolarDay()
-            }
-        } else {
-            thisYearSolar
-        }
-
-        return LocalDate.of(nextSolarDay.getYear(), nextSolarDay.getMonth(), nextSolarDay.getDay())
-    }
-
     fun getLunarMonthDayLabel(date: LocalDate): String {
         val solar = SolarDay.fromYmd(
             date.year,

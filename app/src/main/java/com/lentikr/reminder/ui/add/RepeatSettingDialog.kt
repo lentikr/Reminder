@@ -20,6 +20,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,7 +43,7 @@ fun RepeatSettingDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (RepeatInfo?) -> Unit
 ) {
-    var sliderValue by remember { mutableStateOf(repeatInfo?.interval?.toFloat() ?: 1f) }
+    var sliderValue by remember { mutableFloatStateOf(repeatInfo?.interval?.toFloat() ?: 1f) }
     var textValue by remember { mutableStateOf(repeatInfo?.interval?.toString() ?: "1") }
 
     var unitExpanded by remember { mutableStateOf(false) }

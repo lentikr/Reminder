@@ -34,6 +34,7 @@ import com.lentikr.reminder.ui.theme.ReminderTheme
 import dev.shreyaspatil.capturable.capturable
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.withFrameNanos
 import java.time.LocalDate
 
 enum class CaptureAction { SHARE, SAVE }
@@ -63,22 +64,21 @@ enum class CaptureAction { SHARE, SAVE }
     }
 
     LaunchedEffect(captureAction) {
-        if (captureAction != null) {
-            try {
-                val imageBitmap = captureController.captureAsync().await()
-                when (captureAction) {
-                    CaptureAction.SHARE -> viewModel.shareReminder(imageBitmap.asAndroidBitmap(), context)
-                    CaptureAction.SAVE -> viewModel.saveReminderAsImage(imageBitmap.asAndroidBitmap(), context)
-                    null -> { /* Do nothing */ }
-                }
-            } catch (error: Throwable) {
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar("操作失败，请重试")
-                }
-            } finally {
-                // 无论成功失败，都重置状态以移除 Composable
-                captureAction = null
+        val pendingAction = captureAction ?: return@LaunchedEffect
+        try {
+            // 修复数字还渲染就导出导致的数字部分缺失问题
+            repeat(2) { withFrameNanos { } }
+            val imageBitmap = captureController.captureAsync().await()
+            when (pendingAction) {
+                CaptureAction.SHARE -> viewModel.shareReminder(imageBitmap.asAndroidBitmap(), context)
+                CaptureAction.SAVE -> viewModel.saveReminderAsImage(imageBitmap.asAndroidBitmap(), context)
             }
+        } catch (_: Throwable) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("操作失败，请重试")
+            }
+        } finally {
+            captureAction = null
         }
     }
 

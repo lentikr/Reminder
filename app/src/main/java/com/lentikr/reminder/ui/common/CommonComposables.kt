@@ -10,7 +10,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +32,7 @@ fun AutoResizeText(
 
         LaunchedEffect(text, rememberedStyle, constraints) {
             var currentFontSize = resizedTextStyle.fontSize
-            val maxFontSize = currentFontSize
+            currentFontSize
             val minFontSize = 1.sp
 
             while (currentFontSize > minFontSize) {

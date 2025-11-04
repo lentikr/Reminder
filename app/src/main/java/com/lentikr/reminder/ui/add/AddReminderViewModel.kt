@@ -36,7 +36,7 @@ class AddReminderViewModel(
                 .map { it.trim() }
                 .filter { it.isNotEmpty() }
                 .distinctBy { it.lowercase(locale) }
-                .sortedWith(compareBy<String> { it.lowercase(locale) })
+                .sortedWith(compareBy { it.lowercase(locale) })
         }
         .stateIn(
             scope = viewModelScope,
