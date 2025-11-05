@@ -99,6 +99,7 @@ import com.lentikr.reminder.data.ReminderType
 import com.lentikr.reminder.ui.add.AddReminderScreen
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import com.lentikr.reminder.ui.common.AutoResizeText
+import com.lentikr.reminder.ui.common.AutoSizeMiddleEllipsisText
 import com.lentikr.reminder.ui.list.ReminderListViewModel
 import com.lentikr.reminder.ui.settings.SettingsScreen
 import com.lentikr.reminder.ui.theme.LocalAppDarkTheme
@@ -287,18 +288,8 @@ data class ReminderDisplayInfo(
     val visuals: ReminderCardVisuals
 )
 
-internal fun truncateTitle(title: String, maxLength: Int = 7, takeFirst: Int = 3, takeLast: Int = 3): String {
-    if (title.length <= maxLength) {
-        return title
-    }
-    if (title.length <= takeFirst + takeLast) {
-        return title
-    }
-    return "${title.take(takeFirst)}...${title.takeLast(takeLast)}"
-}
-
 @Composable
-internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean = false): ReminderDisplayInfo {
+internal fun reminderDisplayInfo(reminder: ReminderItem): ReminderDisplayInfo {
     val today = LocalDate.now()
     val visuals = reminderCardVisuals(reminder.type)
 
@@ -308,13 +299,8 @@ internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean =
             if (nextDate == null) {
                 // This is a past, non-repeating event.
                 val formattedDate = reminder.date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd EEEE", Locale.CHINA))
-                val truncatedTitle = if (isDetailView) {
-                    truncateTitle(reminder.title, maxLength = 13, takeFirst = 6, takeLast = 6)
-                } else {
-                    truncateTitle(reminder.title)
-                }
                 return ReminderDisplayInfo(
-                    headerTitle = "$truncatedTitle 已结束",
+                    headerTitle = buildHeaderTitle(reminder.title, "已结束"),
                     dayCount = 0,
                     referenceText = formattedDate,
                     visuals = visuals
@@ -333,18 +319,18 @@ internal fun reminderDisplayInfo(reminder: ReminderItem, isDetailView: Boolean =
         }
     }
 
-    val truncatedTitle = if (isDetailView) {
-        truncateTitle(reminder.title, maxLength = 13, takeFirst = 6, takeLast = 6)
-    } else {
-        truncateTitle(reminder.title)
-    }
-    val headerTitle = "$truncatedTitle $headerLabelSuffix"
+    val headerTitle = buildHeaderTitle(reminder.title, headerLabelSuffix)
     return ReminderDisplayInfo(
         headerTitle = headerTitle,
         dayCount = dayCount,
         referenceText = referenceText,
         visuals = visuals
     )
+}
+
+private fun buildHeaderTitle(title: String, suffix: String): String {
+    val parts = listOf(title.trim(), suffix.trim()).filter { it.isNotEmpty() }
+    return parts.joinToString(" ")
 }
 
 @Composable
@@ -381,6 +367,7 @@ private fun reminderCardVisuals(type: ReminderType): ReminderCardVisuals {
     }
 }
 
+@Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
 @Composable
 private fun DayCountRow(dayCount: Int, visuals: ReminderCardVisuals) {
     val textMeasurer = rememberTextMeasurer()
@@ -841,7 +828,10 @@ private fun FloatingSegmentedTabs(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 10.dp, vertical = 6.dp)
-                .onSizeChanged { containerWidthPx = it.width }
+                .onSizeChanged {
+                    @Suppress("AssignedValueIsNeverRead")
+                    containerWidthPx = it.width
+                }// 不要处理这个warning，会导致底栏高亮失效
         ) {
             if (indicatorWidthPx > 0) {
                 val indicatorWidthDp = with(density) { indicatorWidthPx.toDp() }
@@ -907,6 +897,7 @@ private fun FloatingSegmentedTabs(
     }
 }
 
+@Suppress("COMPOSE_APPLIER_CALL_MISMATCH")
 @Composable
 private fun ReminderSummaryCard(
     reminder: ReminderItem,
@@ -926,9 +917,7 @@ private fun ReminderSummaryCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         onClick = onClick
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+        Column(modifier = Modifier.fillMaxSize()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -936,17 +925,24 @@ private fun ReminderSummaryCard(
                     .background(visuals.headerColor)
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                Text(
+                AutoSizeMiddleEllipsisText(
                     text = displayInfo.headerTitle,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        letterSpacing = 0.sp
+                    ),
                     color = visuals.headerContentColor,
-                    maxLines = 1
+                    maxLines = 1,
+                    minTextSizeSp = 16f,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 DayCountRow(
                     dayCount = displayInfo.dayCount,
@@ -972,11 +968,17 @@ private fun ReminderSummaryCard(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    AutoResizeText(
+                    AutoSizeMiddleEllipsisText(
                         text = displayInfo.referenceText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = visuals.secondaryTextColor
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            letterSpacing = 0.sp,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center
+                        ),
+                        color = visuals.secondaryTextColor,
+                        maxLines = 1,
+                        minTextSizeSp = 15f,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }

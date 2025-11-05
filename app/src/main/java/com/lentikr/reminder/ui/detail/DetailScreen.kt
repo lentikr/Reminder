@@ -22,6 +22,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import com.lentikr.reminder.data.ReminderType
 import com.lentikr.reminder.reminderDisplayInfo
 import com.lentikr.reminder.ui.common.AppViewModelProvider
 import com.lentikr.reminder.ui.common.AutoResizeText
+import com.lentikr.reminder.ui.common.AutoSizeMiddleEllipsisText
 import com.lentikr.reminder.ui.theme.ReminderTheme
 import dev.shreyaspatil.capturable.capturable
 import dev.shreyaspatil.capturable.controller.rememberCaptureController
@@ -280,7 +282,7 @@ fun ReminderDetailCard(
     reminderItem: ReminderItem,
     modifier: Modifier = Modifier
 ) {
-    val displayInfo = reminderDisplayInfo(reminderItem, isDetailView = true)
+    val displayInfo = reminderDisplayInfo(reminderItem)
     val visuals = displayInfo.visuals
 
     Card(
@@ -297,15 +299,27 @@ fun ReminderDetailCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.25f)
+                    .weight(0.22f)
+                    .heightIn(min = 88.dp)
                     .background(visuals.headerColor),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
+                AutoSizeMiddleEllipsisText(
                     text = displayInfo.headerTitle,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 32.sp,
+                        letterSpacing = 0.sp,
+                        textAlign = TextAlign.Center
+                    ),
                     color = visuals.headerContentColor,
-                    fontSize = 20.sp,
-                    maxLines = 1
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                    maxLines = 1,
+                    minTextSizeSp = 22f,
+                    useFontPadding = true,
+                    verticalPaddingDp = 10f
                 )
             }
 
@@ -313,7 +327,7 @@ fun ReminderDetailCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.5f)
+                    .weight(0.56f)
                     .background(visuals.cardBackground)
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -326,7 +340,7 @@ fun ReminderDetailCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(0.25f)
+                    .weight(0.22f)
                     .background(visuals.footerBackground),
                 contentAlignment = Alignment.Center
             ) {
@@ -337,7 +351,9 @@ fun ReminderDetailCard(
                         "目标日: ${displayInfo.referenceText}"
                     },
                     color = visuals.secondaryTextColor,
-                    fontSize = 16.sp
+                    fontSize = 18.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
         }
