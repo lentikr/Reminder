@@ -1,22 +1,28 @@
 package com.lentikr.reminder.ui.detail
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.lentikr.reminder.data.ReminderItem
 import com.lentikr.reminder.data.ReminderRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 class DetailViewModel(
     savedStateHandle: SavedStateHandle,
@@ -41,19 +47,21 @@ class DetailViewModel(
         }
     }
 
-    fun shareReminder(bitmap: Bitmap, context: Context) {
-        val cachePath = File(context.cacheDir, "images")
-        cachePath.mkdirs()
-        val file = File(cachePath, "reminder_share.png")
-        val fileOutputStream = FileOutputStream(file)
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, fileOutputStream)
-        fileOutputStream.close()
-
-        val imageUri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.provider",
-            file
-        )
+    suspend fun shareReminder(bitmap: Bitmap, context: Context) {
+        val imageUri = withContext(Dispatchers.IO) {
+            val cachePath = File(context.cacheDir, "images").apply { mkdirs() }
+            val file = File(cachePath, "reminder_share.png")
+            FileOutputStream(file).use { outputStream ->
+                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)) {
+                    throw IOException("Unable to compress bitmap for sharing")
+                }
+            }
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.provider",
+                file
+            )
+        }
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "image/png"
@@ -65,31 +73,49 @@ class DetailViewModel(
     }
 
     fun saveReminderAsImage(bitmap: Bitmap, context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            viewModelScope.launch {
+                _saveResult.emit(SaveResult.PermissionDenied)
+            }
+            return
+        }
+
         viewModelScope.launch {
-            val contentValues = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, "Reminder_${System.currentTimeMillis()}.png")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Reminders")
-                }
-            }
-
-            val resolver = context.contentResolver
-            val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-
-            if (uri != null) {
-                try {
-                    resolver.openOutputStream(uri)?.use { outputStream ->
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            val success = withContext(Dispatchers.IO) {
+                val contentValues = ContentValues().apply {
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "Reminder_${System.currentTimeMillis()}.png")
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Reminders")
                     }
-                    _saveResult.emit(SaveResult.Success)
-                } catch (e: Exception) {
-                    resolver.delete(uri, null, null)
-                    _saveResult.emit(SaveResult.Failure)
                 }
-            } else {
-                _saveResult.emit(SaveResult.Failure)
+
+                val resolver = context.contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+
+                if (uri != null) {
+                    try {
+                        resolver.openOutputStream(uri)?.use { outputStream ->
+                            if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)) {
+                                throw IOException("Unable to compress bitmap for saving")
+                            }
+                        } ?: throw IOException("Failed to open MediaStore output stream")
+                        true
+                    } catch (e: Exception) {
+                        resolver.delete(uri, null, null)
+                        false
+                    }
+                } else {
+                    false
+                }
             }
+
+            _saveResult.emit(if (success) SaveResult.Success else SaveResult.Failure)
         }
     }
 }
@@ -101,4 +127,5 @@ data class DetailUiState(
 sealed class SaveResult {
     object Success : SaveResult()
     object Failure : SaveResult()
+    object PermissionDenied : SaveResult()
 }

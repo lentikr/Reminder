@@ -1,5 +1,10 @@
 package com.lentikr.reminder.ui.detail
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.core.content.ContextCompat
 import com.lentikr.reminder.R
 import com.lentikr.reminder.ReminderCardVisuals
 import com.lentikr.reminder.Routes
@@ -41,7 +47,7 @@ enum class CaptureAction { SHARE, SAVE }
 
 @ExperimentalComposeUiApi
  @Composable
- fun DetailScreen(
+fun DetailScreen(
     navController: NavController,
     viewModel: DetailViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
@@ -52,12 +58,27 @@ enum class CaptureAction { SHARE, SAVE }
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var captureAction by remember { mutableStateOf<CaptureAction?>(null) }
+    var pendingPermissionAction by remember { mutableStateOf<CaptureAction?>(null) }
+    val needsLegacyStoragePermission = remember { Build.VERSION.SDK_INT < Build.VERSION_CODES.Q }
+    val storagePermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        val actionToResume = pendingPermissionAction
+        if (granted && actionToResume != null) {
+            captureAction = actionToResume
+        } else if (!granted) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("请先授予存储权限")
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.saveResult.collect { result ->
             val message = when (result) {
-                is SaveResult.Success -> "已保存到相册"
-                is SaveResult.Failure -> "保存失败"
+                SaveResult.Success -> "已保存到相册"
+                SaveResult.Failure -> "保存失败"
+                SaveResult.PermissionDenied -> "请先授予存储权限"
             }
             snackbarHostState.showSnackbar(message)
         }
@@ -126,7 +147,16 @@ enum class CaptureAction { SHARE, SAVE }
                     captureAction = CaptureAction.SHARE
                 },
                 onSaveClick = {
-                    captureAction = CaptureAction.SAVE
+                    val hasPermission = !needsLegacyStoragePermission || ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (hasPermission) {
+                        captureAction = CaptureAction.SAVE
+                    } else {
+                        pendingPermissionAction = CaptureAction.SAVE
+                        storagePermissionLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    }
                 }
             )
         }
