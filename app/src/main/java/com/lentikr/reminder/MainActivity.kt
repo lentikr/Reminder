@@ -83,7 +83,6 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
@@ -911,75 +910,81 @@ private fun ReminderSummaryCard(
         modifier = modifier,
         shape = ReminderCardShape,
         colors = CardDefaults.cardColors(
-            containerColor = visuals.cardBackground,
+            containerColor = Color.Transparent,
             contentColor = visuals.numberColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         onClick = onClick
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .background(visuals.headerColor)
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-            ) {
-                AutoSizeMiddleEllipsisText(
-                    text = displayInfo.headerTitle,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
-                        letterSpacing = 0.sp
-                    ),
-                    color = visuals.headerContentColor,
-                    maxLines = 1,
-                    minTextSizeSp = 16f,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                DayCountRow(
-                    dayCount = displayInfo.dayCount,
-                    visuals = visuals
-                )
-            }
-            HorizontalDivider(
-                modifier = Modifier.fillMaxWidth(),
-                thickness = 0.6.dp,
-                color = visuals.footerDividerColor
-            )
-            Surface(
-                color = visuals.footerBackground,
-                contentColor = visuals.secondaryTextColor,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = ReminderCardShape,
+            color = visuals.cardBackground,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                        .background(visuals.headerColor)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     AutoSizeMiddleEllipsisText(
-                        text = displayInfo.referenceText,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            letterSpacing = 0.sp,
-                            fontSize = 15.sp,
-                            textAlign = TextAlign.Center
+                        text = displayInfo.headerTitle,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                            letterSpacing = 0.sp
                         ),
-                        color = visuals.secondaryTextColor,
+                        color = visuals.headerContentColor,
                         maxLines = 1,
-                        minTextSizeSp = 15f,
+                        minTextSizeSp = 16f,
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    DayCountRow(
+                        dayCount = displayInfo.dayCount,
+                        visuals = visuals
+                    )
+                }
+                HorizontalDivider(
+                    modifier = Modifier.fillMaxWidth(),
+                    thickness = 0.6.dp,
+                    color = visuals.footerDividerColor
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                        .background(visuals.footerBackground)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AutoSizeMiddleEllipsisText(
+                            text = displayInfo.referenceText,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                letterSpacing = 0.sp,
+                                fontSize = 13.sp,
+                                textAlign = TextAlign.Center
+                            ),
+                            color = visuals.secondaryTextColor,
+                            maxLines = 1,
+                            minTextSizeSp = 13f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
         }
@@ -1010,36 +1015,5 @@ private fun EmptyStateCard(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ReminderListScreenPreview() {
-    ReminderTheme {
-        val navController = rememberNavController()
-        ReminderListScreen(navController = navController)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun ReminderSummaryCardPreview() {
-    ReminderTheme {
-        ReminderSummaryCard(
-            reminder = ReminderItem(
-                id = 1,
-                title = "生日还有",
-                date = LocalDate.now().plusDays(188),
-                type = ReminderType.ANNUAL,
-                isLunar = false,
-                category = "家人",
-                isPinned = true
-            ),
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            onClick = {}
-        )
     }
 }
