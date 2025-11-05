@@ -68,6 +68,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun AddReminderScreen(
     onNavigateUp: () -> Unit,
+    onDeleted: () -> Unit = onNavigateUp,
     modifier: Modifier = Modifier,
     viewModel: AddReminderViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
@@ -364,7 +365,7 @@ fun AddReminderScreen(
                                     showDeleteConfirmDialog = false
                                     coroutineScope.launch {
                                         if (viewModel.deleteReminder()) {
-                                            onNavigateUp()
+                                            onDeleted()
                                         }
                                     }
                                 }

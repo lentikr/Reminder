@@ -228,7 +228,12 @@ fun ReminderApp() {
                 }
             }
         ) {
-            AddReminderScreen(onNavigateUp = { navController.navigateUp() })
+            AddReminderScreen(
+                onNavigateUp = { navController.navigateUp() },
+                onDeleted = {
+                    navController.popBackStack(Routes.REMINDER_LIST, inclusive = false)
+                }
+            )
         }
         composable(
             route = Routes.DETAIL_REMINDER_PATTERN,
