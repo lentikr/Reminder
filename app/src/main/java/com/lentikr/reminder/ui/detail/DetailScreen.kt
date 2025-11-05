@@ -301,7 +301,11 @@ fun ReminderDetailCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "目标日: ${displayInfo.referenceText}",
+                    text = if (reminderItem.type == ReminderType.COUNT_UP) {
+                        "自 ${displayInfo.referenceText} 起"
+                    } else {
+                        "目标日: ${displayInfo.referenceText}"
+                    },
                     color = visuals.secondaryTextColor,
                     fontSize = 16.sp
                 )
