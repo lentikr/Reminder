@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -360,7 +362,12 @@ fun AddReminderScreen(
                         title = { Text("确认删除") },
                         text = { Text("确定要删除此提醒吗？") },
                         confirmButton = {
-                            TextButton(
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                        ) {
+                            Button(
                                 onClick = {
                                     showDeleteConfirmDialog = false
                                     coroutineScope.launch {
@@ -368,16 +375,34 @@ fun AddReminderScreen(
                                             onDeleted()
                                         }
                                     }
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error,
+                                        contentColor = MaterialTheme.colorScheme.onError
+                                    ),
+                                    modifier = modifier
+                                        .defaultMinSize(minWidth = 1.dp)
+                                        .requiredWidth(88.dp)
+                                ) {
+                                    Text("删除")
                                 }
+                            Button(
+                                onClick = { showDeleteConfirmDialog = false },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 1.dp)
+                                    .requiredWidth(88.dp)
                             ) {
-                                Text("确认")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showDeleteConfirmDialog = false }) {
                                 Text("取消")
                             }
                         }
+                        },
+                        dismissButton = {}
                     )
                 }
             }

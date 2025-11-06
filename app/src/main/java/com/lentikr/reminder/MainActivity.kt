@@ -44,6 +44,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.layout.requiredWidth
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -52,21 +54,22 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
 import androidx.compose.material3.ripple
@@ -123,8 +126,8 @@ import com.lentikr.reminder.util.CalendarUtil
 import com.lentikr.reminder.data.viewModeFlow
 import com.lentikr.reminder.data.saveViewMode
 import com.lentikr.reminder.data.AppThemeOption
-import com.lentikr.reminder.data.themeOptionFlow
 import com.lentikr.reminder.data.pureBlackFlow
+import com.lentikr.reminder.data.themeOptionFlow
 import com.lentikr.reminder.ui.detail.DetailScreen
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
@@ -472,22 +475,23 @@ fun ReminderListScreen(
     Scaffold(
         topBar = {
             if (isSelectionMode) {
-                TopAppBar(
-                    title = { Text("已选择 ${selectedIds.size} 项") },
-                    navigationIcon = {
-                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "退出批量选择"
-                            )
-                        }
-                    },
-                    actions = {
-                        TextButton(onClick = { viewModel.exitSelectionMode() }) {
-                            Text("取消")
-                        }
-                    }
-                )
+        TopAppBar(
+            title = { Text("已选择 ${selectedIds.size} 项") },
+            actions = {
+                Button(
+                    onClick = { viewModel.exitSelectionMode() },
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.padding(end = 12.dp)
+                ) {
+                    Text("取消")
+                }
+            }
+        )
             } else {
                 TopAppBar(
                     title = { Text("Reminder") },
@@ -629,15 +633,27 @@ fun ReminderListScreen(
                     }
 
                     val deleteEnabled = selectedIds.isNotEmpty()
-                    val deleteContainerColor = when {
-                        !isSelectionMode -> MaterialTheme.colorScheme.primary
-                        deleteEnabled -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                    val deleteContainerColor: Color
+                    val deleteContentColor: Color
+                    val deleteElevation = if (isSelectionMode && !deleteEnabled) {
+                        FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 0.dp,
+                            pressedElevation = 0.dp,
+                            focusedElevation = 0.dp,
+                            hoveredElevation = 0.dp
+                        )
+                    } else {
+                        FloatingActionButtonDefaults.elevation()
                     }
-                    val deleteContentColor = when {
-                        !isSelectionMode -> MaterialTheme.colorScheme.onPrimary
-                        deleteEnabled -> MaterialTheme.colorScheme.onError
-                        else -> MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                    if (!isSelectionMode) {
+                        deleteContainerColor = MaterialTheme.colorScheme.primary
+                        deleteContentColor = MaterialTheme.colorScheme.onPrimary
+                    } else if (deleteEnabled) {
+                        deleteContainerColor = MaterialTheme.colorScheme.error
+                        deleteContentColor = MaterialTheme.colorScheme.onError
+                    } else {
+                        deleteContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                        deleteContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     FloatingActionButton(
                         onClick = {
@@ -654,7 +670,8 @@ fun ReminderListScreen(
                             .size(segmentedHeight),
                         shape = CircleShape,
                         containerColor = deleteContainerColor,
-                        contentColor = deleteContentColor
+                        contentColor = deleteContentColor,
+                        elevation = deleteElevation
                     ) {
                         Icon(
                             imageVector = if (isSelectionMode) Icons.Default.Delete else Icons.Default.Add,
@@ -669,19 +686,43 @@ fun ReminderListScreen(
                     onDismissRequest = { showDeleteDialog = false },
                     title = { Text("删除提醒") },
                     text = { Text("确定要删除选中的 ${selectedIds.size} 条提醒吗？此操作不可恢复。") },
-                    dismissButton = {
-                        TextButton(onClick = { showDeleteDialog = false }) {
-                            Text("取消")
+                    confirmButton = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
+                    ) {
+                        Button(
+                            onClick = {
+                                showDeleteDialog = false
+                                viewModel.deleteSelected()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                ),
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 1.dp)
+                                    .requiredWidth(88.dp)
+                            ) {
+                                Text("删除")
+                            }
+                            Button(
+                                onClick = { showDeleteDialog = false },
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier
+                                    .defaultMinSize(minWidth = 1.dp)
+                                    .requiredWidth(88.dp)
+                            ) {
+                                Text("取消")
+                            }
                         }
                     },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            showDeleteDialog = false
-                            viewModel.deleteSelected()
-                        }) {
-                            Text("删除")
-                        }
-                    }
+                    dismissButton = {}
                 )
             }
         }
