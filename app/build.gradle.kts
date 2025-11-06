@@ -44,8 +44,8 @@ android {
         applicationId = "com.lentikr.reminder"
         minSdk = 28
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.7.1"// 修复UI问题
+        versionCode = 16
+        versionName = "1.7.2"// 修复卡片日期显示不全
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

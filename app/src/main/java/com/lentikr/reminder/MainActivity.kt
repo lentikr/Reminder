@@ -1266,12 +1266,12 @@ private fun ReminderSummaryCard(
                             text = displayInfo.referenceText,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 letterSpacing = 0.sp,
-                                fontSize = 15.sp,
+                                fontSize = 13.sp,
                                 textAlign = TextAlign.Center
                             ),
                             color = visuals.secondaryTextColor,
                             maxLines = 1,
-                            minTextSizeSp = 15f,
+                            minTextSizeSp = 13f,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
