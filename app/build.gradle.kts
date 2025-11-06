@@ -44,8 +44,8 @@ android {
         applicationId = "com.lentikr.reminder"
         minSdk = 28
         targetSdk = 36
-        versionCode = 13
-        versionName = "1.6.5"
+        versionCode = 14
+        versionName = "1.7.0"// 添加批量删除功能
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

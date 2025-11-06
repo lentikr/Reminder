@@ -28,6 +28,11 @@ class ReminderRepository(private val reminderDao: ReminderDao) {
         reminderDao.deleteById(id)
     }
 
+    suspend fun deleteRemindersByIds(ids: Set<Int>) {
+        if (ids.isEmpty()) return
+        reminderDao.deleteByIds(ids.toList())
+    }
+
     suspend fun deleteAllReminders() {
         reminderDao.deleteAll()
     }

@@ -1,13 +1,22 @@
-@file:OptIn(ExperimentalSerializationApi::class)
+@file:OptIn(ExperimentalSerializationApi::class, ExperimentalFoundationApi::class)
 
 package com.lentikr.reminder
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -16,6 +25,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,8 +51,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,8 +66,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.contentColorFor
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +84,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -421,6 +437,14 @@ fun ReminderListScreen(
     val context = LocalContext.current
     var viewMode by rememberSaveable { mutableStateOf(ReminderViewMode.CARD) }
     var hasLoaded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val isSelectionMode = reminderListUiState.isSelectionMode
+    val selectedIds = reminderListUiState.selectedIds
+
+    BackHandler(enabled = isSelectionMode) {
+        viewModel.exitSelectionMode()
+    }
 
     LaunchedEffect(Unit) {
         val saved = viewModeFlow(context).first()
@@ -447,17 +471,36 @@ fun ReminderListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Reminder") },
-                actions = {
-                    IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "设置"
-                        )
+            if (isSelectionMode) {
+                TopAppBar(
+                    title = { Text("已选择 ${selectedIds.size} 项") },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.exitSelectionMode() }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "退出批量选择"
+                            )
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.exitSelectionMode() }) {
+                            Text("取消")
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Reminder") },
+                    actions = {
+                        IconButton(onClick = { navController.navigate(Routes.SETTINGS) }) {
+                            Icon(
+                                imageVector = Icons.Default.Settings,
+                                contentDescription = "设置"
+                            )
+                        }
+                    }
+                )
+            }
         },
         floatingActionButton = {},
         modifier = modifier
@@ -473,6 +516,20 @@ fun ReminderListScreen(
             ) { page ->
                 val filteredItems = reminderListUiState.itemList.filter(tabs[page].filter)
                 val sections = buildReminderSections(filteredItems)
+                val handleItemClick: (ReminderItem) -> Unit = { item ->
+                    if (isSelectionMode) {
+                        viewModel.toggleSelection(item.id)
+                    } else {
+                        navController.navigate(Routes.detailReminder(item.id))
+                    }
+                }
+                val handleItemLongPress: (ReminderItem) -> Unit = { item ->
+                    if (isSelectionMode) {
+                        viewModel.toggleSelection(item.id)
+                    } else {
+                        viewModel.startSelection(item.id)
+                    }
+                }
                 if (sections.isEmpty()) {
                     EmptyStateCard(
                         modifier = Modifier
@@ -497,16 +554,24 @@ fun ReminderListScreen(
                                     ReminderSection(
                                         title = section.title,
                                         reminders = section.items,
-                                        onReminderClick = { reminderId ->
-                                            navController.navigate(Routes.detailReminder(reminderId))
+                                        isSelectionMode = isSelectionMode,
+                                        selectedIds = selectedIds,
+                                        onReminderClick = handleItemClick,
+                                        onReminderLongPress = handleItemLongPress,
+                                        onReminderToggleSelection = { reminder ->
+                                            viewModel.toggleSelection(reminder.id)
                                         }
                                     )
                                 } else {
                                     ReminderListSection(
                                         title = section.title,
                                         reminders = section.items,
-                                        onReminderClick = { reminderId ->
-                                            navController.navigate(Routes.detailReminder(reminderId))
+                                        isSelectionMode = isSelectionMode,
+                                        selectedIds = selectedIds,
+                                        onReminderClick = handleItemClick,
+                                        onReminderLongPress = handleItemLongPress,
+                                        onReminderToggleSelection = { reminder ->
+                                            viewModel.toggleSelection(reminder.id)
                                         }
                                     )
                                 }
@@ -563,21 +628,61 @@ fun ReminderListScreen(
                         )
                     }
 
+                    val deleteEnabled = selectedIds.isNotEmpty()
+                    val deleteContainerColor = when {
+                        !isSelectionMode -> MaterialTheme.colorScheme.primary
+                        deleteEnabled -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+                    }
+                    val deleteContentColor = when {
+                        !isSelectionMode -> MaterialTheme.colorScheme.onPrimary
+                        deleteEnabled -> MaterialTheme.colorScheme.onError
+                        else -> MaterialTheme.colorScheme.onError.copy(alpha = 0.7f)
+                    }
                     FloatingActionButton(
-                        onClick = { navController.navigate(Routes.ADD_REMINDER) },
+                        onClick = {
+                            if (isSelectionMode) {
+                                if (deleteEnabled) {
+                                    showDeleteDialog = true
+                                }
+                            } else {
+                                navController.navigate(Routes.ADD_REMINDER)
+                            }
+                        },
                         modifier = Modifier
                             .padding(start = 16.dp)
                             .size(segmentedHeight),
                         shape = CircleShape,
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
+                        containerColor = deleteContainerColor,
+                        contentColor = deleteContentColor
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "添加提醒"
+                            imageVector = if (isSelectionMode) Icons.Default.Delete else Icons.Default.Add,
+                            contentDescription = if (isSelectionMode) "删除选中提醒" else "添加提醒"
                         )
                     }
                 }
+            }
+
+            if (showDeleteDialog) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    title = { Text("删除提醒") },
+                    text = { Text("确定要删除选中的 ${selectedIds.size} 条提醒吗？此操作不可恢复。") },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteDialog = false }) {
+                            Text("取消")
+                        }
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            showDeleteDialog = false
+                            viewModel.deleteSelected()
+                        }) {
+                            Text("删除")
+                        }
+                    }
+                )
             }
         }
     }
@@ -669,7 +774,11 @@ private fun reminderSortValue(reminder: ReminderItem): Int {
 private fun ReminderSection(
     title: String,
     reminders: List<ReminderItem>,
-    onReminderClick: (Int) -> Unit
+    isSelectionMode: Boolean,
+    selectedIds: Set<Int>,
+    onReminderClick: (ReminderItem) -> Unit,
+    onReminderLongPress: (ReminderItem) -> Unit,
+    onReminderToggleSelection: (ReminderItem) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -692,7 +801,11 @@ private fun ReminderSection(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .heightIn(min = 180.dp),
-                                onClick = { onReminderClick(reminder.id) }
+                                isSelectionMode = isSelectionMode,
+                                isSelected = reminder.id in selectedIds,
+                                onClick = { onReminderClick(reminder) },
+                                onLongPress = { onReminderLongPress(reminder) },
+                                onToggleSelection = { onReminderToggleSelection(reminder) }
                             )
                         }
                     }
@@ -709,7 +822,11 @@ private fun ReminderSection(
 private fun ReminderListSection(
     title: String,
     reminders: List<ReminderItem>,
-    onReminderClick: (Int) -> Unit
+    isSelectionMode: Boolean,
+    selectedIds: Set<Int>,
+    onReminderClick: (ReminderItem) -> Unit,
+    onReminderLongPress: (ReminderItem) -> Unit,
+    onReminderToggleSelection: (ReminderItem) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -720,7 +837,11 @@ private fun ReminderListSection(
             reminders.forEach { reminder ->
                 ReminderListItem(
                     reminder = reminder,
-                    onClick = { onReminderClick(reminder.id) }
+                    isSelectionMode = isSelectionMode,
+                    isSelected = reminder.id in selectedIds,
+                    onClick = { onReminderClick(reminder) },
+                    onLongPress = { onReminderLongPress(reminder) },
+                    onToggleSelection = { onReminderToggleSelection(reminder) }
                 )
             }
         }
@@ -730,20 +851,82 @@ private fun ReminderListSection(
 @Composable
 private fun ReminderListItem(
     reminder: ReminderItem,
-    onClick: () -> Unit
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    onToggleSelection: () -> Unit
 ) {
     val displayInfo = reminderDisplayInfo(reminder)
     val visuals = displayInfo.visuals
+    val baseScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.01f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "ListSelectionBaseScale"
+    )
+    val infiniteTransition = rememberInfiniteTransition(label = "ListSelectionShake")
+    val rotationOffset by infiniteTransition.animateFloat(
+        initialValue = if (isSelected) -1.8f else 0f,
+        targetValue = if (isSelected) 1.8f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ListSelectionRotation"
+    )
+    val translationOffset by infiniteTransition.animateFloat(
+        initialValue = if (isSelected) -1.2f else 0f,
+        targetValue = if (isSelected) 1.2f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "ListSelectionTranslation"
+    )
+    val rippleIndication = ripple(
+        bounded = true,
+        color = if (isSelectionMode) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+        } else {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+        }
+    )
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .wrapContentHeight(),
+            .wrapContentHeight()
+            .graphicsLayer {
+                scaleX = baseScale
+                scaleY = baseScale
+                rotationZ = rotationOffset
+                translationX = translationOffset
+            }
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = rippleIndication,
+                onClick = {
+                    if (isSelectionMode) {
+                        onToggleSelection()
+                    } else {
+                        onClick()
+                    }
+                },
+                onLongClick = {
+                    if (isSelectionMode) {
+                        onToggleSelection()
+                    } else {
+                        onLongPress()
+                    }
+                }
+            ),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
+        tonalElevation = if (isSelectionMode) 0.dp else 1.dp,
         shadowElevation = 1.dp,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-        onClick = onClick
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
@@ -756,7 +939,8 @@ private fun ReminderListItem(
                 Text(
                     text = displayInfo.headerTitle,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
-                    maxLines = 1
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = displayInfo.referenceText,
@@ -901,27 +1085,92 @@ private fun FloatingSegmentedTabs(
 private fun ReminderSummaryCard(
     reminder: ReminderItem,
     modifier: Modifier = Modifier,
-    onClick: () -> Unit
+    isSelectionMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongPress: () -> Unit,
+    onToggleSelection: () -> Unit
 ) {
     val displayInfo = reminderDisplayInfo(reminder)
     val visuals = displayInfo.visuals
+    val baseScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.02f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "CardSelectionBaseScale"
+    )
+    val infiniteTransition = rememberInfiniteTransition(label = "CardSelectionShake")
+    val rotationOffset by infiniteTransition.animateFloat(
+        initialValue = if (isSelected) -2.6f else 0f,
+        targetValue = if (isSelected) 2.6f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "CardSelectionRotation"
+    )
+    val translationOffset by infiniteTransition.animateFloat(
+        initialValue = if (isSelected) -2f else 0f,
+        targetValue = if (isSelected) 2f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 160, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "CardSelectionTranslation"
+    )
+    val rippleIndication = ripple(
+        bounded = true,
+        color = if (isSelectionMode) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+        } else {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        }
+    )
 
     Card(
-        modifier = modifier,
+        modifier = modifier
+            .graphicsLayer {
+                scaleX = baseScale
+                scaleY = baseScale
+                rotationZ = rotationOffset
+                translationX = translationOffset
+            },
         shape = ReminderCardShape,
         colors = CardDefaults.cardColors(
             containerColor = Color.Transparent,
             contentColor = visuals.numberColor
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        onClick = onClick
+        onClick = {}
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .combinedClickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = rippleIndication,
+                    onClick = {
+                        if (isSelectionMode) {
+                            onToggleSelection()
+                        } else {
+                            onClick()
+                        }
+                    },
+                    onLongClick = {
+                        if (isSelectionMode) {
+                            onToggleSelection()
+                        } else {
+                            onLongPress()
+                        }
+                    }
+                ),
             shape = ReminderCardShape,
             color = visuals.cardBackground,
             tonalElevation = 0.dp,
-            shadowElevation = 0.dp
+            shadowElevation = 0.dp,
+            border = null
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
@@ -976,12 +1225,12 @@ private fun ReminderSummaryCard(
                             text = displayInfo.referenceText,
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 letterSpacing = 0.sp,
-                                fontSize = 13.sp,
+                                fontSize = 15.sp,
                                 textAlign = TextAlign.Center
                             ),
                             color = visuals.secondaryTextColor,
                             maxLines = 1,
-                            minTextSizeSp = 13f,
+                            minTextSizeSp = 15f,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
