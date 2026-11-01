@@ -1,3 +1,136 @@
 <resources>
     <string name="app_name">Reminder</string>
+
+    <!-- Common -->
+    <string name="action_back">返回</string>
+    <string name="action_close">关闭</string>
+    <string name="action_cancel">取消</string>
+    <string name="action_confirm">确定</string>
+    <string name="action_done">完成</string>
+    <string name="action_delete">删除</string>
+    <string name="action_edit">编辑</string>
+    <string name="action_save">保存</string>
+    <string name="action_undo">撤销</string>
+    <string name="action_settings">设置</string>
+
+    <!-- Reminder types -->
+    <string name="type_countdown">倒数日</string>
+    <string name="type_count_up">正数日</string>
+
+    <!-- Day counts -->
+    <string name="count_prefix_remaining">还有</string>
+    <string name="count_prefix_ended">已过</string>
+    <string name="count_prefix_elapsed">第</string>
+    <string name="count_unit_day">天</string>
+    <string name="count_today">今天</string>
+    <string name="count_ended_suffix">已结束</string>
+    <string name="count_since">自 %1$s 起</string>
+    <string name="count_starts">%1$s 开始</string>
+    <!-- Calendar card header: "<title> 还有", "<title> 就是", "<title> 第" -->
+    <string name="header_remaining">还有</string>
+    <string name="header_today">就是</string>
+    <string name="header_ended">已过</string>
+    <string name="header_elapsed">第</string>
+    <string name="header_not_started">距开始</string>
+    <string name="count_today_big">今天</string>
+
+    <!-- Repeat -->
+    <string name="repeat_none">不重复</string>
+    <string name="repeat_every_day">每天</string>
+    <string name="repeat_every_week">每周</string>
+    <string name="repeat_every_month">每月</string>
+    <string name="repeat_every_year">每年</string>
+    <string name="repeat_every_n_days">每 %1$d 天</string>
+    <string name="repeat_every_n_weeks">每 %1$d 周</string>
+    <string name="repeat_every_n_months">每 %1$d 个月</string>
+    <string name="repeat_every_n_years">每 %1$d 年</string>
+    <string name="repeat_lunar_suffix">（农历）</string>
+    <string name="repeat_unit_day">天</string>
+    <string name="repeat_unit_week">周</string>
+    <string name="repeat_unit_month">月</string>
+    <string name="repeat_unit_year">年</string>
+
+    <!-- Home -->
+    <string name="home_today">%1$s · 农历%2$s</string>
+    <string name="home_section_pinned">置顶</string>
+    <string name="home_section_uncategorized">未分类</string>
+    <string name="home_add">新建纪念日</string>
+    <string name="home_layout_cards">卡片视图</string>
+    <string name="home_layout_list">列表视图</string>
+    <string name="home_empty_countdown_title">还没有倒数日</string>
+    <string name="home_empty_countdown_body">记下生日、节日和重要的日子，提前知道还有几天。</string>
+    <string name="home_empty_count_up_title">还没有正数日</string>
+    <string name="home_empty_count_up_body">记下值得纪念的开始，看看已经走过多少天。</string>
+    <string name="home_selected">已选择 %1$d 项</string>
+    <string name="home_select">选择</string>
+    <string name="home_select_all">全选</string>
+    <string name="home_pin">置顶</string>
+    <string name="home_unpin">取消置顶</string>
+    <string name="home_deleted">已删除 %1$d 项</string>
+    <string name="home_pick_one">选择一个纪念日查看详情</string>
+
+    <!-- Detail -->
+    <string name="detail_date">日期</string>
+    <string name="detail_lunar_date">农历</string>
+    <string name="detail_next">下一次</string>
+    <string name="detail_start">开始日期</string>
+    <string name="detail_repeat">重复</string>
+    <string name="detail_category">分类</string>
+    <string name="detail_share">分享</string>
+    <string name="detail_save_image">保存图片</string>
+    <string name="poster_style_wood">木纹</string>
+    <string name="poster_style_bloom">花园</string>
+    <string name="poster_style_night">夜空</string>
+    <string name="detail_share_chooser">分享纪念日</string>
+    <string name="detail_saved">已保存到相册 Pictures/Reminder</string>
+    <string name="detail_export_failed">图片导出失败</string>
+    <string name="detail_not_found">这个纪念日已被删除</string>
+    <string name="detail_delete_title">删除“%1$s”？</string>
+    <string name="detail_delete_body">删除后无法恢复。</string>
+
+    <!-- Edit -->
+    <string name="edit_title_new">新建纪念日</string>
+    <string name="edit_title_edit">编辑纪念日</string>
+    <string name="edit_field_title">标题</string>
+    <string name="edit_field_title_error">请输入标题</string>
+    <string name="edit_field_category">分类（可选）</string>
+    <string name="edit_date">日期</string>
+    <string name="edit_lunar">按农历计算</string>
+    <string name="edit_lunar_off">关闭后按公历计算</string>
+    <string name="edit_repeat">重复</string>
+    <string name="edit_pinned">置顶</string>
+    <string name="edit_pinned_body">在列表顶部显示</string>
+    <string name="edit_delete">删除纪念日</string>
+    <string name="edit_repeat_enabled">重复提醒</string>
+    <string name="edit_repeat_interval">间隔</string>
+    <string name="edit_repeat_decrease">减少间隔</string>
+    <string name="edit_repeat_increase">增加间隔</string>
+    <string name="edit_repeat_lunar_hint">月、年按农历日期重复，例如每年的正月初一。</string>
+
+    <!-- Settings -->
+    <string name="settings_section_appearance">外观</string>
+    <string name="settings_section_data">数据</string>
+    <string name="settings_section_about">关于</string>
+    <string name="settings_theme_system">跟随系统</string>
+    <string name="settings_theme_light">浅色</string>
+    <string name="settings_theme_dark">深色</string>
+    <string name="settings_dynamic_color">动态取色</string>
+    <string name="settings_dynamic_color_body">使用壁纸的颜色</string>
+    <string name="settings_pure_black">纯黑背景</string>
+    <string name="settings_pure_black_body">深色模式下使用纯黑色，OLED 屏幕更省电</string>
+    <string name="settings_backup">备份</string>
+    <string name="settings_backup_body">把所有纪念日导出为 JSON 文件</string>
+    <string name="settings_restore">恢复</string>
+    <string name="settings_restore_body">从 JSON 备份文件导入</string>
+    <string name="settings_restore_title">从备份恢复？</string>
+    <string name="settings_restore_message">备份中的纪念日会替换当前全部数据。</string>
+    <string name="settings_restore_action">恢复</string>
+    <string name="settings_backup_done">已备份 %1$d 个纪念日</string>
+    <string name="settings_backup_empty">没有可以备份的纪念日</string>
+    <string name="settings_restore_done">已恢复 %1$d 个纪念日</string>
+    <string name="settings_backup_failed">备份失败：%1$s</string>
+    <string name="settings_restore_failed">恢复失败：%1$s</string>
+    <string name="settings_version">版本</string>
+    <string name="settings_source">源代码</string>
+    <string name="settings_source_url">https://github.com/lentikr/Reminder</string>
 </resources>

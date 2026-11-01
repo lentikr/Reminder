@@ -1,17 +1,32 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Gradle and build output
+.gradle/
+build/
+.kotlin/
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Machine-specific SDK path, written by Android Studio
 local.properties
-app/release
+
+# IDE files. The Gradle build defines the project, so Android Studio regenerates these.
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Release signing. Keep these offline; CI reads them from repository secrets.
 keystore.properties
+*.jks
+*.keystore
+*.p12
+
+# Packages built outside build/, e.g. Android Studio's "Generate Signed APK" output in app/release/
+*.apk
+*.aab
+/app/release/
+
+# Heap dumps from a crashed Gradle daemon
+*.hprof
