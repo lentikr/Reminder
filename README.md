@@ -23,16 +23,16 @@ Reminder 是一款安卓纪念日应用，记录倒数日和正数日，支持�
 
 ## 技术选型
 
-| 方面 | 选择 | 说明 |
-| --- | --- | --- |
-| UI | Jetpack Compose + Material 3 Expressive（`material3` 1.5.0-beta02） | ButtonGroup、FloatingToolbar、SegmentedListItem、形状变形和 expressive 动效都只在 1.5 系列里，所以单独固定了版本，领先 BOM |
-| 导航 | Navigation 3 + `material3-adaptive` 的 `ListDetailSceneStrategy` | 返回栈由应用持有；同一套代码在手机上单栏、大屏上双栏 |
-| 依赖注入 | Hilt，带参数的 ViewModel 用 assisted injection | |
-| 存储 | Room 3 存纪念日，DataStore 存设置 | 数据库导出 schema，便于以后写迁移 |
-| 农历 | [tyme4kt](https://github.com/6tail/tyme4kt) | 只在 `domain/LunarCalendar.kt` 里使用，其他代码不直接依赖它 |
-| 序列化 | kotlinx.serialization | 备份文件和编辑草稿 |
-| 文件 | 备份用存储访问框架（SAF），保存图片用 MediaStore，分享用 FileProvider | 全程不申请存储权限 |
-| 系统集成 | Edge-to-edge、预测性返回、SplashScreen API | 启动页等设置读取完成才消失，避免主题闪烁 |
+| 方面     | 选择                                                                  | 说明                                                                                                                       |
+| -------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| UI       | Jetpack Compose + Material 3 Expressive（`material3` 1.5.0-beta02）   | ButtonGroup、FloatingToolbar、SegmentedListItem、形状变形和 expressive 动效都只在 1.5 系列里，所以单独固定了版本，领先 BOM |
+| 导航     | Navigation 3 + `material3-adaptive` 的 `ListDetailSceneStrategy`      | 返回栈由应用持有；同一套代码在手机上单栏、大屏上双栏                                                                       |
+| 依赖注入 | Hilt，带参数的 ViewModel 用 assisted injection                        |                                                                                                                            |
+| 存储     | Room 3 存纪念日，DataStore 存设置                                     | 数据库导出 schema，便于以后写迁移                                                                                          |
+| 农历     | [tyme4kt](https://github.com/6tail/tyme4kt)                           | 只在 `domain/LunarCalendar.kt` 里使用，其他代码不直接依赖它                                                                |
+| 序列化   | kotlinx.serialization                                                 | 备份文件和编辑草稿                                                                                                         |
+| 文件     | 备份用存储访问框架（SAF），保存图片用 MediaStore，分享用 FileProvider | 全程不申请存储权限                                                                                                         |
+| 系统集成 | Edge-to-edge、预测性返回、SplashScreen API                            | 启动页等设置读取完成才消失，避免主题闪烁                                                                                   |
 
 最低支持 Android 10（API 29），目标 API 37。
 
@@ -67,21 +67,13 @@ keyPassword=…
 - `.github/workflows/ci.yml`：推送到 `main` 和每个 Pull Request 都会跑单元测试、lint 和调试版构建。
 - `.github/workflows/release.yml`：推送 `v*` 标签时构建签名的发布版，创建 GitHub Release 并附上两个 APK 和 `SHA256SUMS`。标签必须和 `app/build.gradle.kts` 里的 `versionName` 一致，带 `-` 的标签（如 `v2.1.0-beta1`）会标成预发布。
 
-发布工作流需要在仓库的 Settings → Secrets and variables → Actions 里配置四个 secret：
+发布工作流需要在仓库的 Settings → Secrets and variables → Actions 里配置三个 secret：
 
-| Secret | 内容 |
-| --- | --- |
+| Secret                     | 内容                         |
+| -------------------------- | ---------------------------- |
 | `REMINDER_KEYSTORE_BASE64` | `release.jks` 的 base64 编码 |
-| `REMINDER_STORE_PASSWORD` | keystore 密码 |
-| `REMINDER_KEY_ALIAS` | 密钥别名 |
-| `REMINDER_KEY_PASSWORD` | 密钥密码 |
-
-发布新版本时，先在 `app/build.gradle.kts` 里增加 `versionCode`、修改 `versionName`，提交后打标签：
-
-```bash
-git tag v2.0.1
-git push origin v2.0.1
-```
+| `REMINDER_STORE_PASSWORD`  | keystore 密码                |
+| `REMINDER_KEY_PASSWORD`    | 密钥密码                     |
 
 ## 测试
 

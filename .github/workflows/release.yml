@@ -48,7 +48,8 @@ jobs:
         env:
           REMINDER_STORE_FILE: ${{ runner.temp }}/release.jks
           REMINDER_STORE_PASSWORD: ${{ secrets.REMINDER_STORE_PASSWORD }}
-          REMINDER_KEY_ALIAS: ${{ secrets.REMINDER_KEY_ALIAS }}
+          # Not a secret: GitHub masks secret values in logs, and "reminder" would mask every package path.
+          REMINDER_KEY_ALIAS: reminder
           REMINDER_KEY_PASSWORD: ${{ secrets.REMINDER_KEY_PASSWORD }}
         run: ./gradlew testDebugUnitTest assembleRelease
 

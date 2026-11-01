@@ -35,7 +35,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -104,6 +105,9 @@ fun SolarDatePickerDialog(initial: LocalDate, onDismiss: () -> Unit, onConfirm: 
 /** Years the lunar picker offers; the same range keeps both pickers consistent. */
 private val LUNAR_YEARS = 1901..2099
 
+/** The sheets open straight to full height, with no half-open stop. */
+private val HiddenOrExpanded = setOf(SheetValue.Hidden, SheetValue.Expanded)
+
 /** Picks a lunar year, month (including leap months) and day with three wheels. */
 @Composable
 fun LunarDatePickerSheet(initial: LocalDate, onDismiss: () -> Unit, onConfirm: (LocalDate) -> Unit) {
@@ -123,7 +127,7 @@ fun LunarDatePickerSheet(initial: LocalDate, onDismiss: () -> Unit, onConfirm: (
   val selected = LunarDate(year, months[monthIndex].first, safeDay, months[monthIndex].second)
   val solar = remember(selected) { LunarCalendar.toSolar(selected) }
 
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = HiddenOrExpanded)
   val scope = rememberCoroutineScope()
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).navigationBarsPadding()) {
@@ -262,7 +266,7 @@ fun RepeatSheet(initial: Repeat?, lunar: Boolean, onDismiss: () -> Unit, onConfi
   var enabled by rememberSaveable { mutableStateOf(initial != null) }
   var unit by rememberSaveable { mutableStateOf(initial?.unit ?: RepeatUnit.YEAR) }
   var interval by rememberSaveable { mutableIntStateOf(initial?.interval ?: 1) }
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = HiddenOrExpanded)
 
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp).navigationBarsPadding()) {

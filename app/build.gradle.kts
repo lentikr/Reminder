@@ -28,8 +28,8 @@ android {
     applicationId = "app.lentikr.reminder"
     minSdk = 29
     targetSdk = 37
-    versionCode = 20
-    versionName = "2.0.0"
+    versionCode = 21
+    versionName = "2.0.1"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -96,6 +96,9 @@ kotlin {
       "androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
       "androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi",
     )
+    // Opt in to the upcoming default: annotations on constructor properties (e.g. @DrawableRes,
+    // @ApplicationContext) go to both the parameter and the field. See KT-73255.
+    freeCompilerArgs.add("-Xannotation-default-target=param-property")
   }
 }
 
